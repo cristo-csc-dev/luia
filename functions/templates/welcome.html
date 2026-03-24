@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+  <html lang="es">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Bienvenido a Luia</title>
+      <style>
+          /* Estilos básicos para asegurar visualización en todos los clientes */
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; margin: 0; padding: 0; -webkit-text-size-adjust: 100%; background-color: #f4f7f6; }
+          table { border-collapse: collapse; }
+          td { font-size: 16px; color: #333333; line-height: 1.5; }
+          img { max-width: 100%; height: auto; border: 0; }
+          
+          /* Color Violeta de tu Logo */
+          .brand-color { color: #6214A4 !important; }
+          
+          /* Botón principal usando tu color violeta */
+          .button { display: inline-block; padding: 15px 30px; background-color: #6214A4; color: white !important; text-decoration: none; border-radius: 25px; font-weight: bold; font-size: 16px; margin-top: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+          .button:hover { background-color: #4c107e; }
+
+          @media only screen and (max-width: 600px) {
+              .container { width: 100% !important; padding: 10px !important; }
+              .logo-container { padding: 30px !important; }
+              .main-content { padding: 30px 20px !important; }
+          }
+      </style>
+  </head>
+  <body>
+      <table width="100%" bgcolor="#f4f7f6" cellpadding="0" cellspacing="0">
+          <tr>
+              <td align="center">
+                  <table class="container" width="600" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
+                      <tr>
+                          <td align="center" style="padding: 40px; background-color: #ffffff; border-radius: 10px 10px 0 0;" class="logo-container">
+                              <img src="https://i.ibb.co/68038d1/tu-logo-real-luia.png" alt="Logo de Luia" width="100" style="display: block;">
+                          </td>
+                      </tr>
+                      <tr>
+                          <td bgcolor="#ffffff" style="padding: 50px 40px; border-radius: 0 0 10px 10px;" class="main-content">
+                              <h1 style="font-size: 24px; color: #1a1a1a; margin-top: 0; margin-bottom: 10px; text-align: center;">¡Bienvenido a Luia!</h1>
+                              <p class="brand-color" style="font-size: 18px; text-align: center; margin-bottom: 30px; font-weight: 500;">
+                                  Has llegado a la aplicación de consumo más anticonsumista.
+                              </p>
+                              <p style="margin-bottom: 20px;">
+                                  Gracias por unirte a Luia. Tu decisión es el primer paso hacia un consumo más consciente y responsable. Estamos muy contentos de tenerte en nuestra comunidad.
+                              </p>
+                              <p style="margin-bottom: 30px;">
+                                  Para comenzar este viaje y activar tu cuenta, por favor confirma tu dirección de correo electrónico haciendo clic en el siguiente botón:
+                              </p>
+                              <table width="100%" cellpadding="0" cellspacing="0">
+                                  <tr>
+                                      <td align="center">
+                                          <a href="${link}" class="button">Verificar mi cuenta</a>
+                                      </td>
+                                  </tr>
+                              </table>
+                              <p style="font-size: 12px; color: #666666; text-align: center; margin-top: 40px; border-top: 1px solid #eeeeee; padding-top: 20px;">
+                                  Si el botón no funciona, copia y pega este enlace en tu navegador:<br>
+                                  <a href="${link}" class="brand-color" style="text-decoration: underline;">${link}</a>
+                              </p>
+                          </td>
+                      </tr>
+                      <tr>
+                          <td align="center" style="padding: 30px; font-size: 12px; color: #999999;">
+                              <p>&copy; 2026 Luia App. Un consumo más inteligente.</p>
+                              <p>Has recibido este correo porque te has registrado en nuestra aplicación.</p>
+                          </td>
+                      </tr>
+                  </table>
+              </td>
+          </tr>
+      </body>
+</html>
