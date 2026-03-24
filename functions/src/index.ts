@@ -263,8 +263,9 @@ export const sendWelcomeEmail = functions.auth.user().onCreate(async (user) => {
     const pathToHtml = path.join(__dirname, "../templates/welcome.html");
     const htmlTemplate = fs.readFileSync(pathToHtml, "utf8");
 
-    // Reemplazas variables (como el link) usando un simple replace
-    const finalHtml = htmlTemplate.replace("{{link}}", link);
+    // Reemplazas variables (como el link) usando una expresión
+    // regular global para todas las ocurrencias
+    const finalHtml = htmlTemplate.replace(/{{link}}/g, link);
 
     // Diseño del correo (Aquí puedes meter TODO el HTML/CSS que quieras)
     const mailOptions = {
