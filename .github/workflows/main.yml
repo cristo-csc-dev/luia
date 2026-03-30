@@ -1,0 +1,35 @@
+name: Flutter Web Build
+
+on:
+  push:
+    branches: [ main ] # Se ejecuta al subir cambios a main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descarga el código de tu repositorio
+      - uses: actions/checkout@v4
+
+      # 2. Configura el SDK de Flutter
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable' # O 'beta', 'master'
+          # flutter-version: '3.19.0' # Opcional: define una versión exacta
+
+      # 3. Instala dependencias
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 4. Construye el proyecto para Web
+      - name: Build Web
+        run: flutter build web --release
+
+      # 5. (Opcional) Subir los archivos generados como artefacto
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: build/web
