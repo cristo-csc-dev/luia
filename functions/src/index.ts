@@ -22,7 +22,9 @@ const db = getFirestore();
 
 // Interfaces for type safety
 interface ItemData {
-  [key: string]: unknown;
+  imageUrl?: string;
+  name: string;
+  productUrl?: string;
 }
 
 interface ContactRequestData {
@@ -79,10 +81,13 @@ export const syncItemsToGlobalList = functions
 
       // 2. Manejo de CREACIÓN o ACTUALIZACIÓN
       const itemData = change.after.data() as ItemData;
+      logger.info("Item data: ", itemData);
       await globalRef.set(
         {
-          ...itemData,
           itemId: itemId,
+          name: itemData.name,
+          productUrl: itemData.productUrl,
+          imageUrl: itemData.imageUrl,
           originalWishlistId: wishlistId,
           ownerId: userId,
           flattenedAt: admin.firestore.FieldValue.serverTimestamp(),

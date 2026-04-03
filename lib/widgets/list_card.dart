@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:luia/auth/user_auth.dart';
 import 'package:luia/models/wish_list.dart';
-import 'package:luia/static/available_wishlist_icons.dart';
 
 class ListCard extends StatelessWidget {
   final WishList wishList;
@@ -48,15 +47,11 @@ class ListCard extends StatelessWidget {
             children: [
               CircleAvatar(
                   backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                  backgroundImage: (wishList.iconKey != null && availableIcons.containsKey(wishList.iconKey))
-                      ? AssetImage(availableIcons[wishList.iconKey]!['path'] as String)
-                      : null,
-                  child: (wishList.iconKey == null || !availableIcons.containsKey(wishList.iconKey))
-                      ? (wishList.name.isNotEmpty
+                  backgroundImage: null,
+                  child: (wishList.name.isNotEmpty
                           ? Text((wishList.name.length > 1 ? wishList.name.substring(0, 2) : wishList.name).toUpperCase(),
                               style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold))
-                          : const Icon(Icons.card_giftcard, color: Colors.indigo))
-                      : null,
+                          : const Icon(Icons.card_giftcard, color: Colors.indigo)),
                 ),
                 const SizedBox(width: 10),
                 Expanded(child: Column(

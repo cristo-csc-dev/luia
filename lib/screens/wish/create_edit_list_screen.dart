@@ -6,7 +6,6 @@ import 'package:luia/dao/wish_list_dao.dart';
 import 'package:luia/models/contact.dart';
 import 'package:luia/models/wish_list.dart';
 import 'package:uuid/uuid.dart';
-import 'package:luia/static/available_wishlist_icons.dart'; // Añadir al pubspec.yaml: uuid: ^4.0.0
 
 class CreateEditListScreen extends StatefulWidget {
   final String? wishListId; // Si es null, es una nueva lista; si no, es para editar
@@ -63,9 +62,7 @@ class _CreateEditListScreenState extends State<CreateEditListScreen> {
       _nameController = TextEditingController(text: _wishList?.name ?? '');
       _selectedPrivacy = _wishList?.privacy ?? ListPrivacy.private;
       _selectedContactIds = List.from(_wishList?.sharedWithContactIds ?? []);
-      _selectedAssetPath = _wishList?.iconKey != null && availableIcons.containsKey(_wishList!.iconKey) && availableIcons[_wishList!.iconKey]!['type'] == 'asset'
-        ? availableIcons[_wishList!.iconKey]!['path'] as String
-        : null;
+      _selectedAssetPath = null;
       _selectedKey = _wishList?.iconKey;
       _isLoading = false;
     });
@@ -212,75 +209,6 @@ class _CreateEditListScreenState extends State<CreateEditListScreen> {
               const SizedBox(height: 16),
               const Center(child: Text('Elige un icono', style: TextStyle(color: Colors.grey))),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: () => _scrollIcons(-150),
-                  ),
-                  Expanded(
-                    child: SizedBox(
-                      height: 60,
-                      child: ListView.builder(
-                        controller: _iconScrollController,
-                        scrollDirection: Axis.horizontal,
-                        itemCount: availableIcons.length,
-                        itemBuilder: (context, index) {
-                          final entry = availableIcons.entries.elementAt(index);
-                          final item = entry.value;
-                          final type = item['type'];
-                          final isAsset = type == 'asset';
-                          
-                          final isSelected = isAsset 
-                              ? _selectedAssetPath == item['path']
-                              : _selectedIconCodePoint == (item['icon'] as IconData).codePoint;
-
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                            child: InkWell(
-                              onTap: () {
-                                setState(() {
-                                  if (isAsset) {
-                                    _selectedKey = entry.key;
-                                    _selectedAssetPath = item['path'];
-                                    _selectedIconCodePoint = null;
-                                    _selectedColorValue = null;
-                                  } else {
-                                    _selectedAssetPath = null;
-                                    _selectedIconCodePoint = (item['icon'] as IconData).codePoint;
-                                    _selectedColorValue = (item['color'] as Color).value;
-                                  }
-                                });
-                              },
-                              borderRadius: BorderRadius.circular(50),
-                              child: Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: isSelected ? (isAsset ? Colors.grey.withOpacity(0.2) : (item['color'] as Color).withOpacity(0.2)) : Colors.transparent,
-                                  shape: BoxShape.circle,
-                                  border: isSelected ? Border.all(color: isAsset ? Colors.grey : (item['color'] as Color), width: 2) : null,
-                                ),
-                                child: isAsset
-                                    ? Padding(padding: const EdgeInsets.all(8.0), child: Image.asset(item['path']))
-                                    : Icon(
-                                        item['icon'] as IconData,
-                                        color: isSelected ? (item['color'] as Color) : Colors.grey,
-                                        size: 30,
-                                      ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: () => _scrollIcons(150),
-                  ),
-                ],
-              ),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _nameController,
