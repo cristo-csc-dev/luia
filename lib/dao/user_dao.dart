@@ -45,6 +45,7 @@ class UserDao {
   // Función para enviar una solicitud de contacto
   Future<void> sendContactRequest({
     required String email,
+    required String? name,
     required String? message,
   }) async {
     if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
@@ -91,7 +92,7 @@ class UserDao {
     } else {
       data = {
         'senderUserId': UserAuth.instance.getCurrentUser().uid,
-        'senderName': senderSnapshot['name'],
+        'senderName': name?? senderSnapshot['name'],
         'senderEmail': senderSnapshot['email'],
         'recipientUserId': recipientUid,
         'recipientName': recipientDoc['name'],

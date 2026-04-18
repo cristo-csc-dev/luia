@@ -18,7 +18,6 @@ import 'package:luia/models/wish_list.dart';
 import 'package:luia/screens/notification/notification_list_screen.dart';
 import 'package:luia/screens/wish/add_wish_screen.dart';
 import 'package:luia/screens/contacts/friend_list_overview_screen.dart';
-import 'package:luia/static/available_wishlist_icons.dart';
 import 'package:luia/widgets/contact_avatar.dart';
 import 'package:luia/widgets/wish_card.dart';
 
@@ -32,7 +31,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
 
   String _sharedLink = "{}";
-  static const platform = MethodChannel('com.wishysa.wishy/channel');
+  static const platform = MethodChannel('com.luia/channel');
   StreamSubscription? _notificationCountSubscription;
   StreamSubscription<User?>? _userChangesSubscription;
 
@@ -56,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Wishy'),
+        title: const Text('Luia'),
         leading: Builder(
           builder: (context) => IconButton(
             icon: _getDrawerHeader(UserAuth().isUserAuthenticated() ? UserAuth().getCurrentUser() : null).currentAccountPicture!,

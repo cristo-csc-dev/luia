@@ -23,7 +23,7 @@ class _AddContactScreenState extends State<AddContactScreen> {
       });
 
       try {
-        await _userDao.sendContactRequest( email: _emailController.text, message: '',);
+        await _userDao.sendContactRequest( email: _emailController.text, name: '', message: '',);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Solicitud enviada con éxito.')),
         );

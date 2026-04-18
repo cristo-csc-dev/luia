@@ -25,7 +25,7 @@ class _CreateContactRequestScreenState extends State<CreateContactRequestScreen>
     // Prepara el mensaje por defecto
     final defaultName = currentUser.displayName ?? 'un amigo';
     _messageController.text =
-        'Hola, soy $defaultName. ¿Me agregas como wishy-contacto?';
+        'Hola, soy $defaultName. ¿Me agregas como luia-contacto?';
   }
 
   void _addContact() async {
@@ -37,7 +37,7 @@ class _CreateContactRequestScreenState extends State<CreateContactRequestScreen>
     
     //try {
       if (name.isNotEmpty && email.isNotEmpty) {
-        await UserDao().sendContactRequest(email: email, message: message);
+        await UserDao().sendContactRequest(email: email, name: name, message: message);
         print('Añadir contacto: $name, $email');
         Navigator.of(context).pop();
       } else {
