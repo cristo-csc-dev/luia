@@ -57,7 +57,7 @@ class _LuiaSaveIconState extends State<LuiaSaveIcon> with TickerProviderStateMix
       animation: Listenable.merge([_strokeCtrl, _sparkCtrl]),
       builder: (_, __) => CustomPaint(
         size: Size.square(widget.size),
-        painter: _LumaSavePainter(
+        painter: _LuiaSavePainter(
           strokeT: _strokeCtrl.value,
           sparkT: _sparkCtrl.value,
           color: widget.color,
@@ -67,8 +67,8 @@ class _LuiaSaveIconState extends State<LuiaSaveIcon> with TickerProviderStateMix
   }
 }
 
-class _LumaSavePainter extends CustomPainter {
-  _LumaSavePainter({required this.strokeT, required this.sparkT, required this.color});
+class _LuiaSavePainter extends CustomPainter {
+  _LuiaSavePainter({required this.strokeT, required this.sparkT, required this.color});
 
   final double strokeT; // 0..1
   final double sparkT;  // 0..1
@@ -181,6 +181,6 @@ class _LumaSavePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _LumaSavePainter oldDelegate) =>
+  bool shouldRepaint(covariant _LuiaSavePainter oldDelegate) =>
       oldDelegate.strokeT != strokeT || oldDelegate.sparkT != sparkT || oldDelegate.color != color;
 }
