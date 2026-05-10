@@ -187,6 +187,7 @@ class WishlistDao {
         claimData['suggestedStore'] = sourceData['suggestedStore'] ?? '';
         claimData['priority'] = sourceData['priority'];
         claimData['productUrl'] = sourceData['productUrl'] ?? '';
+        claimData['storeOptions'] = sourceData['storeOptions'];
         claimData['movedAt'] = FieldValue.serverTimestamp();
 
         // Escribir claim

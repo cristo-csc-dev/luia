@@ -19,7 +19,7 @@ import 'package:luia/screens/notification/notification_list_screen.dart';
 import 'package:luia/screens/wish/add_wish_screen.dart';
 import 'package:luia/screens/contacts/friend_list_overview_screen.dart';
 import 'package:luia/widgets/contact_avatar.dart';
-import 'package:luia/widgets/wish_card.dart';
+import 'package:luia/widgets/compact_wish_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -135,9 +135,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 privacy: ListPrivacy.public,
                 itemCount: 0,
               )..id = data['originalWishlistId'];
-              return WishCard(
+              return CompactWishCard(
                 wishItem: wishItem,
-                // wishList: wishList,
               );
             },
           );

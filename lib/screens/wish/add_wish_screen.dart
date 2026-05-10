@@ -30,6 +30,10 @@ class _AddWishScreenState extends State<AddWishScreen> {
   late TextEditingController _storeController;
   late TextEditingController _notesController;
   late TextEditingController _newListController;
+  late TextEditingController _newStoreNameController;
+  late TextEditingController _newStoreUrlController;
+  late TextEditingController _newStorePriceController;
+  List<StoreOption> _storeOptions = [];
   int _selectedPriority = 3; // Default medium priority
   final Set<String> _selectedWishlistIds = {};
 
@@ -88,6 +92,10 @@ class _AddWishScreenState extends State<AddWishScreen> {
     _newListController = TextEditingController();
     _newListController.addListener(_onNewListNameChanged);
     _selectedPriority = _wishItem?.priority ?? 3;
+    _storeOptions = List.from(_wishItem?.storeOptions ?? []);
+    _newStoreNameController = TextEditingController();
+    _newStoreUrlController = TextEditingController();
+    _newStorePriceController = TextEditingController();
   }
 
   @override
@@ -99,6 +107,9 @@ class _AddWishScreenState extends State<AddWishScreen> {
     _notesController.dispose();
     _newListController.removeListener(_onNewListNameChanged);
     _newListController.dispose();
+    _newStoreNameController.dispose();
+    _newStoreUrlController.dispose();
+    _newStorePriceController.dispose();
     super.dispose();
   }
 
@@ -112,6 +123,27 @@ class _AddWishScreenState extends State<AddWishScreen> {
       if (_selectedWishlistIds.isNotEmpty && _listSelectionError) {
         _listSelectionError = false;
       }
+    });
+  }
+
+  void _addStoreOption() {
+    final name = _newStoreNameController.text.trim();
+    final url = _newStoreUrlController.text.trim();
+    final price = double.tryParse(_newStorePriceController.text.trim()) ?? 0.0;
+
+    if (name.isNotEmpty) {
+      setState(() {
+        _storeOptions.add(StoreOption(name: name, productUrl: url, price: price));
+        _newStoreNameController.clear();
+        _newStoreUrlController.clear();
+        _newStorePriceController.clear();
+      });
+    }
+  }
+
+  void _removeStoreOption(int index) {
+    setState(() {
+      _storeOptions.removeAt(index);
     });
   }
 
@@ -159,6 +191,7 @@ class _AddWishScreenState extends State<AddWishScreen> {
       notes: _notesController.text,
       priority: _selectedPriority,
       imageUrl: _wishItem?.imageUrl,
+      storeOptions: _storeOptions,
     );
 
     try {
@@ -302,6 +335,74 @@ class _AddWishScreenState extends State<AddWishScreen> {
                             border: OutlineInputBorder(),
                           ),
                           maxLines: 3,
+                        ),
+                        const SizedBox(height: 24),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Alternativas',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        ..._storeOptions.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final option = entry.value;
+                          return Card(
+                            margin: const EdgeInsets.symmetric(vertical: 4),
+                            child: ListTile(
+                              title: Text(option.name),
+                              subtitle: Text(
+                                '${option.price.toStringAsFixed(2)}€\n${option.productUrl}',
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () => _removeStoreOption(index),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Añadir alternativa:',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  TextField(
+                                    controller: _newStoreNameController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Nombre de la alternativa',
+                                      isDense: true,
+                                    ),
+                                  ),
+                                  TextField(
+                                    controller: _newStoreUrlController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'URL del producto',
+                                      isDense: true,
+                                    ),
+                                  ),
+                                  TextField(
+                                    controller: _newStorePriceController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Precio',
+                                      isDense: true,
+                                    ),
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: _addStoreOption,
+                              icon: const Icon(Icons.add_circle, color: Colors.indigo, size: 32),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 24),
                         Text(
