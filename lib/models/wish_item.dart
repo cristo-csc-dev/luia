@@ -1,5 +1,33 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+class StoreOption {
+  final String name;
+  final String productUrl;
+  final double price;
+
+  StoreOption({
+    required this.name,
+    required this.productUrl,
+    required this.price,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'productUrl': productUrl,
+      'price': price,
+    };
+  }
+
+  factory StoreOption.fromMap(Map<String, dynamic> map) {
+    return StoreOption(
+      name: map['name'] ?? '',
+      productUrl: map['productUrl'] ?? '',
+      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+}
+
 class WishItem {
   final String id;
   String name;
@@ -17,6 +45,8 @@ class WishItem {
   String? claimedBy;
   DateTime? claimedAt;
 
+  List<StoreOption>? storeOptions;
+
   WishItem({
     required this.id,
     required this.name,
@@ -31,6 +61,7 @@ class WishItem {
     this.isTaken = false,
     this.claimedBy,
     this.claimedAt,
+    this.storeOptions,
   });
 
   Map<String, dynamic> toMap() {
@@ -44,6 +75,7 @@ class WishItem {
       'priority': priority,
       'isBought': isBought,
       'boughtById': boughtById,
+      'storeOptions': storeOptions?.map((o) => o.toMap()).toList(),
     };
   }
 
@@ -62,6 +94,9 @@ class WishItem {
       priority: data['priority'] ?? 3,
       isBought: data['isBought'] ?? false,
       boughtById: data['boughtById'],
+      storeOptions: (data['storeOptions'] as List?)
+          ?.map((o) => StoreOption.fromMap(o as Map<String, dynamic>))
+          .toList(),
     );
   }
 }
