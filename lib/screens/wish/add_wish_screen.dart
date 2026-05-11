@@ -387,14 +387,6 @@ class _AddWishScreenState extends State<AddWishScreen> {
                                       isDense: true,
                                     ),
                                   ),
-                                  TextField(
-                                    controller: _newStorePriceController,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Precio',
-                                      isDense: true,
-                                    ),
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  ),
                                 ],
                               ),
                             ),

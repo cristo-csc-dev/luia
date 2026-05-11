@@ -22,7 +22,7 @@ class CompactWishCard extends StatelessWidget {
       child: InkWell(
         onTap: () {
           // Navegar al detalle del deseo
-          context.go('/global/${wishItem.id}/detail');
+          context.go('/home/global/${wishItem.id}/detail');
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

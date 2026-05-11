@@ -505,16 +505,6 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 8),
-                                      Text(
-                                        option.price > 0
-                                            ? '${option.price.toStringAsFixed(2)} €'
-                                            : 'Precio no especificado',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
                                       if (option.productUrl.isNotEmpty)
                                         Text(
                                           option.productUrl,
