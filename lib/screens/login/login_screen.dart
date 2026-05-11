@@ -1,5 +1,7 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luia/auth/user_auth.dart';
 import 'package:luia/dao/user_dao.dart';
@@ -75,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      UserDao().triggerPasswordReset(email);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -91,15 +93,17 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           _errorMessage = message;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        log(message);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al procesar solicitud. Inténtelo más tarde.')));
       }
     } catch (e) {
       if (mounted) {
-        final msg = 'Error al enviar el email: $e';
+        final msg = 'Error al enviar el email: $e.message';
         setState(() {
           _errorMessage = msg;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+        log(msg);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al procesar solicitud. Inténtelo más tarde.')));
       }
     } finally {
       if (mounted) {

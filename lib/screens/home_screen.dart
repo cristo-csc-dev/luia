@@ -9,17 +9,12 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:luia/auth/user_auth.dart';
 import 'package:luia/dao/notification_dao.dart';
-import 'package:luia/dao/user_dao.dart';
-import 'package:luia/dao/wish_list_dao.dart';
 import 'package:luia/intent/android_intent.dart';
-import 'package:luia/models/contact.dart';
 import 'package:luia/models/wish_item.dart';
 import 'package:luia/models/wish_list.dart';
 import 'package:luia/screens/notification/notification_list_screen.dart';
 import 'package:luia/screens/wish/add_wish_screen.dart';
-import 'package:luia/screens/contacts/friend_list_overview_screen.dart';
-import 'package:luia/widgets/contact_avatar.dart';
-import 'package:luia/widgets/wish_card.dart';
+import 'package:luia/widgets/compact_wish_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -135,9 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 privacy: ListPrivacy.public,
                 itemCount: 0,
               )..id = data['originalWishlistId'];
-              return WishCard(
+              return CompactWishCard(
                 wishItem: wishItem,
-                // wishList: wishList,
               );
             },
           );

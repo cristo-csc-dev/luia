@@ -439,12 +439,6 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                       isUrl: true,
                     ),
 
-                    // // Lista a la que pertenece
-                    // _buildDetailItem(
-                    //   'Perteneciente a la Lista',
-                    //   _wishList!.name,
-                    // ),
-
                     // Notas / Detalles
                     if (_wishItem!.notes != null &&
                         _wishItem!.notes!.isNotEmpty) ...[
@@ -472,6 +466,94 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                         ),
                       ),
                     ],
+
+                    if (_wishItem!.storeOptions != null &&
+                        _wishItem!.storeOptions!.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        'Alternativas',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 180,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _wishItem!.storeOptions!.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            final option = _wishItem!.storeOptions![index];
+                            return SizedBox(
+                              width: 200,
+                              child: Card(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 3,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        option.name,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      if (option.productUrl.isNotEmpty)
+                                        Text(
+                                          option.productUrl,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .primary,
+                                          ),
+                                        ),
+                                      const SizedBox(height: 12),
+                                      if (option.productUrl.isNotEmpty)
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: ElevatedButton.icon(
+                                            onPressed: () async {
+                                              final uri =
+                                                  Uri.parse(option.productUrl);
+                                              if (await canLaunchUrl(uri)) {
+                                                await launchUrl(uri);
+                                              }
+                                            },
+                                            icon: const Icon(Icons.open_in_new),
+                                            label: const Text('Abrir'),
+                                            style: ElevatedButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                vertical: 10,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+
+                    // // Lista a la que pertenece
+                    // _buildDetailItem(
+                    //   'Perteneciente a la Lista',
+                    //   _wishList!.name,
+                    // ),
                     const SizedBox(height: 20),
 
                     // Aquí podrías añadir un botón para volver a editar si lo deseas

@@ -69,19 +69,20 @@ export const syncItemsToGlobalList = functions
       change: functions.Change<DocumentSnapshot>,
       context: functions.EventContext
     ) => {
+      logger.info("Luia: Nuevo item ${itemId} en listas");
       const {userId, wishlistId, itemId} = context.params;
       const globalRef = db.collection("all_wishes_global").doc(itemId);
 
       // 1. Manejo de ELIMINACIÓN
       if (!change.after.exists) {
         await globalRef.delete();
-        logger.info(`Ítem ${itemId} eliminado de la lista global.`);
+        logger.info(`Luia: Ítem ${itemId} eliminado de la lista global.`);
         return;
       }
 
       // 2. Manejo de CREACIÓN o ACTUALIZACIÓN
       const itemData = change.after.data() as ItemData;
-      logger.info("Item data: ", itemData);
+      logger.info("Luia: Item data: ", itemData);
       await globalRef.set(
         {
           itemId: itemId,
@@ -96,7 +97,8 @@ export const syncItemsToGlobalList = functions
       );
 
       logger.info(
-        `Ítem ${itemId} de la lista ${wishlistId} sincronizado globalmente`
+        `Luia: Ítem ${itemId} de la lista ${wishlistId} 
+        sincronizado globalmente`
       );
     }
   );
@@ -144,7 +146,7 @@ export const onNewContactRequest = functions
       await notificationRef.add(newNotification);
 
       logger.info(
-        `Notificación creada para ${recipientUserId} por ${senderUserId}`
+        `Luia: Notificación creada para ${recipientUserId} por ${senderUserId}`
       );
     }
   );
@@ -171,7 +173,7 @@ export const onContactRequestStatusUpdate = functions
 
       if (!senderId) {
         logger.error(
-          `ERROR: Notificación ${context.params.notificationId} ` +
+          `Luia: ERROR: Notificación ${context.params.notificationId} ` +
           "no tiene senderUserId."
         );
         return null;
@@ -202,7 +204,8 @@ export const onContactRequestStatusUpdate = functions
         ]);
 
         logger.info(
-          `Contactos creados (bidireccional) entre ${recipientId} y ${senderId}`
+          `Luia: Contactos creados (bidireccional) entre 
+          ${recipientId} y ${senderId}`
         );
 
         const recipientContactName =
@@ -234,7 +237,7 @@ export const onContactRequestStatusUpdate = functions
       await change.after.ref.delete().catch(() => null);
 
       logger.info(
-        `Procesada la actualización de estado a "${newStatus}" ` +
+        `Luia: Procesada la actualización de estado a "${newStatus}" ` +
         `para la solicitud de contacto entre ${senderId} y ${recipientId}.`
       );
 
@@ -287,3 +290,83 @@ export const sendWelcomeEmail = functions.auth.user().onCreate(async (user) => {
   }
   return null;
 });
+
+/**
+ * Cloud Function: sendCustomPasswordReset
+ * Se invoca desde la App como una función 'onCall'
+ */
+export const sendCustomPasswordReset = functions
+  .runWith({maxInstances: 10})
+  .firestore
+  .document("reset_password/{email}")
+  .onUpdate(
+    async (
+      change: functions.Change<QueryDocumentSnapshot>,
+      context: functions.EventContext
+    ) => {
+      const email = context.params.email;
+
+      logger.warn(`Luia: Email ${email} recibido.`);
+      const user = await admin.auth().getUserByEmail(email);
+      logger.warn("Luia: Ítem encontrado.", user);
+      // if (!user) {
+      //   return;
+      // }
+
+      // 1. Verificación de seguridad básica
+      if (!email || !email.includes("@")) {
+        throw new functions.https.HttpsError(
+          "invalid-argument",
+          "Se requiere un correo electrónico válido."
+        );
+      }
+
+      try {
+        // 2. Generar el Action Link oficial de Firebase
+        // Nota: 'url' es a donde quieres que se redirija
+        // al usuario tras cambiar la clave (opcional)
+        const link = await admin.auth().generatePasswordResetLink(email, {
+          url: "https://luia-48689.firebaseapp.com",
+          handleCodeInApp: false,
+        });
+
+
+        // ... dentro de tu función onCreate:
+        const pathToHtml = path.join(
+          __dirname,
+          "../templates/resetPassword.html"
+        );
+        const htmlTemplate = fs.readFileSync(pathToHtml, "utf8");
+
+        // Reemplazas variables (como el link) usando una expresión
+        // regular global para todas las ocurrencias
+        const finalHtml = htmlTemplate.replace(/{{link}}/g, link);
+
+        // 5. Envío del correo
+        await transporter.sendMail({
+          from: "noresponder@luia.app",
+          to: email,
+          subject: "Restablecer contraseña en Luia",
+          html: finalHtml,
+        });
+
+        return {
+          success: true,
+          message: "Correo enviado correctamente",
+        };
+      } catch (error: any) {
+        console.error("Error en sendCustomPasswordReset:", error);
+        // Mapeo de errores de Firebase Auth a errores de HTTPS
+        if (error.code === "auth/user-not-found") {
+          throw new functions.https.HttpsError(
+            "not-found",
+            "El usuario no existe."
+          );
+        }
+
+        throw new functions.https.HttpsError(
+          "internal",
+          "Error al procesar la solicitud."
+        );
+      }
+    });

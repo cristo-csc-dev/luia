@@ -262,4 +262,21 @@ class UserDao {
       .get();
     return Contact.fromFirestore(doc);
   }
+
+  Future<void> triggerPasswordReset(String email) async {
+  try {
+    // Referencia al documento del usuario dentro de la colección 'resetPassword'
+    // Usamos el email como ID del documento para que sea único por usuario
+    final docRef = _db.collection('reset_password').doc(email);
+
+    await docRef.set({
+      'count': FieldValue.increment(1),
+      'lastRequested': FieldValue.serverTimestamp(), // Opcional: útil para control de spam
+    }, SetOptions(merge: true));
+
+    print('Solicitud enviada a Firestore');
+  } catch (e) {
+    print('Error al actualizar Firestore: $e');
+  }
+}
 }
