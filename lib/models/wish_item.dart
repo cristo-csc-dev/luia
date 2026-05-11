@@ -47,6 +47,10 @@ class WishItem {
 
   List<StoreOption>? storeOptions;
 
+  // Campos para estadísticas globales
+  int commentCount;
+  int sharedCount;
+
   WishItem({
     required this.id,
     required this.name,
@@ -62,6 +66,8 @@ class WishItem {
     this.claimedBy,
     this.claimedAt,
     this.storeOptions,
+    this.commentCount = 0,
+    this.sharedCount = 0,
   });
 
   Map<String, dynamic> toMap() {
@@ -97,6 +103,8 @@ class WishItem {
       storeOptions: (data['storeOptions'] as List?)
           ?.map((o) => StoreOption.fromMap(o as Map<String, dynamic>))
           .toList(),
+      commentCount: data['commentCount'] ?? 0,
+      sharedCount: data['sharedCount'] ?? 0,
     );
   }
 }
