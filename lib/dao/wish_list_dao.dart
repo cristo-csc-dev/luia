@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:luia/auth/user_auth.dart';
+import 'package:luia/models/comment.dart';
 import 'package:luia/models/wish_item.dart';
 import 'package:luia/models/wish_list.dart';
 
@@ -294,6 +295,34 @@ class WishlistDao {
       .doc(wishItemId)
       .get();
     return WishItem.fromFirestore(wishMap);
+  }
+
+  // Métodos para comentarios
+  Future<void> addComment({
+    required String wishId,
+    required String userId,
+    required String userName,
+    required String text,
+  }) async {
+    final commentRef = _db.collection('all_wishes_global').doc(wishId).collection('comments').doc();
+    await commentRef.set({
+      'wishId': wishId,
+      'userId': userId,
+      'userName': userName,
+      'text': text,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    // Incrementar commentCount en el wish global
+    await _db.collection('all_wishes_global').doc(wishId).update({
+      'commentCount': FieldValue.increment(1),
+    });
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> getCommentsStream(String wishId) {
+    return _db.collection('all_wishes_global').doc(wishId).collection('comments')
+      .orderBy('createdAt', descending: true)
+      .snapshots();
   }
 
 }

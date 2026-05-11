@@ -25,6 +25,7 @@ interface ItemData {
   imageUrl?: string;
   name: string;
   productUrl?: string;
+  linkToGlobalWishId?: string; // Campo para linkear a deseo global existente
 }
 
 interface ContactRequestData {
@@ -71,35 +72,71 @@ export const syncItemsToGlobalList = functions
     ) => {
       logger.info("Luia: Nuevo item ${itemId} en listas");
       const {userId, wishlistId, itemId} = context.params;
-      const globalRef = db.collection("all_wishes_global").doc(itemId);
 
       // 1. Manejo de ELIMINACIÓN
       if (!change.after.exists) {
-        await globalRef.delete();
-        logger.info(`Luia: Ítem ${itemId} eliminado de la lista global.`);
+        // Obtener el globalWishId del documento eliminado
+        const beforeData = change.before.data() as ItemData;
+        const globalWishIdToDelete = beforeData?.linkToGlobalWishId ?? itemId;
+        const globalRefToDelete =
+        db.collection("all_wishes_global").doc(globalWishIdToDelete);
+        // Decrementar contador (nunca eliminar el documento global)
+        await globalRefToDelete.update({
+          sharedCount: admin.firestore.FieldValue.increment(-1),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        logger.info(`Luia: Deseo global ${globalWishIdToDelete} 
+          contador decrementado.`);
+        logger.info(`Luia: Ítem ${itemId} eliminado de 
+          la lista global.`);
         return;
       }
-
       // 2. Manejo de CREACIÓN o ACTUALIZACIÓN
       const itemData = change.after.data() as ItemData;
       logger.info("Luia: Item data: ", itemData);
-      await globalRef.set(
-        {
-          itemId: itemId,
-          name: itemData.name,
+      const globalWishId = itemData.linkToGlobalWishId ?? itemId;
+      const globalRef = db.collection("all_wishes_global").doc(globalWishId);
+      // Verificar si el deseo global ya existe
+      const globalDoc = await globalRef.get();
+      const isNewGlobalWish = !globalDoc.exists;
+      if (isNewGlobalWish) {
+        // Crear nuevo deseo global
+        await globalRef.set(
+          {
+            itemId: globalWishId,
+            name: itemData.name,
+            productUrl: itemData.productUrl,
+            imageUrl: itemData.imageUrl,
+            originalWishlistId: wishlistId,
+            ownerId: userId,
+            sharedCount: 1,
+            commentCount: 0,
+            flattenedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          {merge: true}
+        );
+        logger.info(`Luia: Nuevo deseo global creado: ${globalWishId}`);
+      } else {
+        // Incrementar contador de compartidos
+        await globalRef.update({
+          sharedCount: admin.firestore.FieldValue.increment(1),
+          name: itemData.name, // Actualizar datos por si cambiaron
           productUrl: itemData.productUrl,
           imageUrl: itemData.imageUrl,
-          originalWishlistId: wishlistId,
-          ownerId: userId,
-          flattenedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        {merge: true}
-      );
-
-      logger.info(
-        `Luia: Ítem ${itemId} de la lista ${wishlistId} 
-        sincronizado globalmente`
-      );
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        logger.info(`Luia: Deseo global existente actualizado: 
+          ${globalWishId}, contador incrementado`);
+      }
+      const originalItemRef = db.collection("users").doc(userId)
+        .collection("wishlists").doc(wishlistId)
+        .collection("items").doc(itemId);
+      await originalItemRef.update({
+        globalWishId: globalWishId,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      logger.info(`Luia: Ítem ${itemId} sincronizado 
+        globalmente con ID: ${globalWishId}`);
     }
   );
 
@@ -354,10 +391,11 @@ export const sendCustomPasswordReset = functions
           success: true,
           message: "Correo enviado correctamente",
         };
-      } catch (error: any) {
-        console.error("Error en sendCustomPasswordReset:", error);
+      } catch (error: unknown) {
+        const err = error as { code?: string; message?: string };
+        console.error("Error en sendCustomPasswordReset:", err);
         // Mapeo de errores de Firebase Auth a errores de HTTPS
-        if (error.code === "auth/user-not-found") {
+        if (err.code === "auth/user-not-found") {
           throw new functions.https.HttpsError(
             "not-found",
             "El usuario no existe."
