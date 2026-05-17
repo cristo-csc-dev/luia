@@ -5,52 +5,99 @@ class UnderConstructionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Scaffold proporciona la estructura básica de la página
     return Scaffold(
-      backgroundColor: Colors.white, // Fondo limpio
-      // Center asegura que todo el bloque de contenido esté en medio de la pantalla
+      backgroundColor: Colors.blueGrey.shade50,
       body: Center(
-        // Padding para que el contenido no toque los bordes en pantallas pequeñas
         child: Padding(
           padding: const EdgeInsets.all(30.0),
-          // Column organiza los elementos (imagen, texto) verticalmente
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center, // Centra verticalmente dentro de la columna
-            crossAxisAlignment: CrossAxisAlignment.center, // Centra horizontalmente
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 1. LA IMAGEN CENTRAL
-              // Asegúrate de que la ruta coincida exactamente con la de tu pubspec.yaml
-              Image.asset(
-                'assets/images/construction_image.png', // <--- CAMBIA ESTO por el nombre real de tu archivo
-                width: 300, // Ajusta el tamaño según necesites
-                fit: BoxFit.contain, // Asegura que la imagen se vea completa sin deformarse
+              // Logo de Android
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.blueGrey,
+                  shape: BoxShape.circle,
+                ),
+                padding: const EdgeInsets.all(24),
+                child: const Icon(
+                  Icons.construction,
+                  size: 80,
+                  color: Colors.white,
+                ),
               ),
 
-              // Espacio entre la imagen y el texto
+              const SizedBox(height: 32),
+
+              // Nombre de la app con logo de Android
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade400,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    child: const Text(
+                      '🤖',
+                      style: TextStyle(fontSize: 24),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Luia',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueGrey,
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 40),
 
-              // 2. TÍTULO PRINCIPAL
+              // Título principal
               const Text(
-                'Página Bajo Construcción',
+                'En Construcción',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Colors.blueGrey,
                 ),
               ),
 
-              // Espacio pequeño
               const SizedBox(height: 16),
 
-              // 3. SUBTÍTULO / MENSAJE
+              // Subtítulo / mensaje
               Text(
-                'Estamos trabajando duro para traerte algo increíble. ¡Vuelve pronto!',
+                'Estamos trabajando duro para traerte algo increíble.\n¡Vuelve pronto!',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.grey[600],
-                  height: 1.5, // Altura de línea para mejor lectura
+                  color: Colors.grey[700],
+                  height: 1.6,
+                ),
+              ),
+
+              const SizedBox(height: 48),
+
+              // Indicador de progreso opcional
+              SizedBox(
+                width: 100,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: const LinearProgressIndicator(
+                    minHeight: 6,
+                    backgroundColor: Colors.blueGrey,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                  ),
                 ),
               ),
             ],

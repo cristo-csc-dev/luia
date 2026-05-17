@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,6 +8,7 @@ import 'firebase_options.dart';
 import 'package:luia/routes.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:luia/services/contacts_manager.dart';
+import 'package:luia/services/deep_link_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -42,10 +45,14 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  late final DeepLinkService _deepLinkService;
+  StreamSubscription<Uri>? _deepLinkSubscription;
 
   @override
   void initState() {
     super.initState();
+    _deepLinkService = DeepLinkService();
+
     // Escuchar cambios de estado de autenticación para cargar/limpiar contactos
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null) {
@@ -55,6 +62,21 @@ class _MyAppState extends State<MyApp> {
         ContactsManager.instance.clear();
       }
     });
+
+    _deepLinkSubscription = _deepLinkService.linkStream.listen((uri) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _deepLinkService.handleUri(uri, context);
+      });
+    });
+
+    _deepLinkService.init();
+  }
+
+  @override
+  void dispose() {
+    _deepLinkSubscription?.cancel();
+    _deepLinkService.dispose();
+    super.dispose();
   }
 
   @override

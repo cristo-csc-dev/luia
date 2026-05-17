@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1083554086475",
+    "project_id": "luia-48689",
+    "storage_bucket": "luia-48689.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1083554086475:android:e57640e6e39ab69fd9d7ce",
+        "android_client_info": {
+          "package_name": "com.luia"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCO8C6mEUXUTK8OGZPQmDPSfLL3kuHIZQk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
