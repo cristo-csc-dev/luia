@@ -18,17 +18,29 @@ class ContactAvatar extends StatelessWidget {
     this.radius = small,
   });
 
+  Future<String?> _loadAvatarUrl() async {
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('user_profiles')
+        .child(contactId);
+
+    try {
+      return await storageRef.child('profile_$contactId.png').getDownloadURL();
+    } catch (_) {
+      try {
+        return await storageRef.child('profile_$contactId.jpg').getDownloadURL();
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String>(
-      future: FirebaseStorage.instance
-          .ref()
-          .child('user_profiles')
-          .child(contactId)
-          .child('profile_$contactId.jpg')
-          .getDownloadURL(),
+    return FutureBuilder<String?>(
+      future: _loadAvatarUrl(),
       builder: (context, snapshot) {
-        if (snapshot.hasData) {
+        if (snapshot.hasData && snapshot.data != null && snapshot.data!.isNotEmpty) {
           return CircleAvatar(
             radius: radius,
             backgroundImage: NetworkImage(snapshot.data!),

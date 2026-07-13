@@ -31,7 +31,8 @@
                 <data android:mimeType="text/*" />
                 <data android:mimeType="image/*" />
                 <data android:mimeType="video/*" />
-                <data android:mimeType="application/*" />                <data android:mimeType="text/x-vcard" />
+                <data android:mimeType="application/*" />
+                <data android:mimeType="text/x-vcard" />
                 <data android:mimeType="*/*" /> <!-- Para cualquier otro tipo de archivo -->
             </intent-filter>
             <!-- Android App Link: abre https://www.luia.app directamente en la app when verified -->

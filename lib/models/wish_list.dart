@@ -33,6 +33,7 @@ class WishList {
   String? iconKey;
 
   WishList({
+    this.id,
     required this.name, 
     required this.privacy, 
     required this.ownerId, 

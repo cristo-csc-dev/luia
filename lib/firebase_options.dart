@@ -47,29 +47,29 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDb5FNILo68mISMPjePwYIFqqaNXX2ht2U',
-    appId: '1:960285388676:web:3dbbdbd534387664bf77d1',
-    messagingSenderId: '960285388676',
-    projectId: 'wishy-back',
-    authDomain: 'wishy-back.firebaseapp.com',
-    storageBucket: 'wishy-back.firebasestorage.app',
-    measurementId: 'G-EDCZVGZ8MY',
+    apiKey: 'AIzaSyB6Px_5dyq14hSveV5DmzEl5TUx1hVN-Lw',
+    appId: '1:1083554086475:web:d5208d61edc24e0fd9d7ce',
+    messagingSenderId: '1083554086475',
+    projectId: 'luia-48689',
+    authDomain: 'luia-48689.firebaseapp.com',
+    storageBucket: 'luia-48689.firebasestorage.app',
+    measurementId: 'G-PXR0W8LBL9',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCAKQiatwXn4Ya95uWfIyg_JP5906cIc7Q',
-    appId: '1:960285388676:android:23d33764101feb1dbf77d1',
-    messagingSenderId: '960285388676',
-    projectId: 'wishy-back',
-    storageBucket: 'wishy-back.firebasestorage.app',
+    apiKey: 'AIzaSyCO8C6mEUXUTK8OGZPQmDPSfLL3kuHIZQk',
+    appId: '1:1083554086475:android:e57640e6e39ab69fd9d7ce',
+    messagingSenderId: '1083554086475',
+    projectId: 'luia-48689',
+    storageBucket: 'luia-48689.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyD5AAaq1rQt3txXN5xm9wRUpdjbgiv6XJY',
-    appId: '1:960285388676:ios:6743a9b1f6602287bf77d1',
-    messagingSenderId: '960285388676',
-    projectId: 'wishy-back',
-    storageBucket: 'wishy-back.firebasestorage.app',
-    iosBundleId: 'com.wishy.wishy',
+    apiKey: 'AIzaSyBlp0APfSZK3QId8CUpZ-hNNEbc6GzKbd8',
+    appId: '1:1083554086475:ios:577e54510e129966d9d7ce',
+    messagingSenderId: '1083554086475',
+    projectId: 'luia-48689',
+    storageBucket: 'luia-48689.firebasestorage.app',
+    iosBundleId: 'com.example.luia',
   );
 }

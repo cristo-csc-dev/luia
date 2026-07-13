@@ -214,12 +214,12 @@ class WishlistDao {
     }
   }
 
-  void createOrUpdateWishlist(String id, Map<String, Object> map) async {
+  Future<void> createOrUpdateWishlist(String id, Map<String, Object> map) async {
     if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
       throw Exception('Usuario no autenticado.');
     }
     await _db
-     .collection('users')
+      .collection('users')
       .doc(UserAuth.instance.getCurrentUser().uid)
       .collection('wishlists')
       .doc(id)

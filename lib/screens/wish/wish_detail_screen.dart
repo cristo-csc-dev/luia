@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:luia/auth/user_auth.dart';
 import 'package:luia/dao/wish_list_dao.dart';
+import 'package:luia/models/comment.dart';
 import 'package:luia/models/wish_item.dart';
 import 'package:luia/models/wish_list.dart'; // Asegúrate de que este import sea correcto
 import 'package:uuid/uuid.dart';
@@ -35,6 +37,8 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
   bool _isLoading = false;
   WishItem? _wishItem;
   WishList? _wishList;
+  final TextEditingController _commentController = TextEditingController();
+  final int _maxLength = 200;
 
   @override
   void initState() {
@@ -254,6 +258,46 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addComment() async {
+    final text = _commentController.text.trim();
+    if (text.isEmpty) return;
+
+    final user = UserAuth.instance.getCurrentUser();
+    if (user == null) return;
+
+    final userName = user.displayName ?? user.email ?? 'Usuario';
+
+    await WishlistDao().addComment(
+      wishId: widget.wishItemId,
+      userId: user.uid,
+      userName: userName,
+      text: text,
+    );
+
+    _commentController.clear();
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} d';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} h';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} min';
+    } else {
+      return 'Ahora';
+    }
   }
 
   @override
@@ -555,6 +599,86 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                     //   _wishList!.name,
                     // ),
                     const SizedBox(height: 20),
+
+                    if (widget.wishListId == null) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                        'Comentarios',
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _commentController,
+                        maxLength: _maxLength,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: 'Escribe tu comentario...',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: ElevatedButton.icon(
+                          onPressed: _addComment,
+                          icon: const Icon(Icons.send),
+                          label: const Text('Comentar'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: WishlistDao().getCommentsStream(widget.wishItemId),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasError) {
+                            return const Text('No se pudieron cargar los comentarios');
+                          }
+                          if (snapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+
+                          final docs = snapshot.data?.docs ?? [];
+                          if (docs.isEmpty) {
+                            return const Text('Aún no hay comentarios.');
+                          }
+
+                          return ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: docs.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final comment = Comment.fromFirestore(docs[index]);
+                              return Card(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              comment.userName,
+                                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                          Text(
+                                            _formatDate(comment.createdAt),
+                                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(comment.text),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
 
                     // Aquí podrías añadir un botón para volver a editar si lo deseas
                   ],

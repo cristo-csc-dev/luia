@@ -26,6 +26,7 @@ interface ItemData {
   name: string;
   productUrl?: string;
   linkToGlobalWishId?: string; // Campo para linkear a deseo global existente
+  globalWishId?: string;
 }
 
 interface ContactRequestData {
@@ -96,6 +97,11 @@ export const syncItemsToGlobalList = functions
       logger.info("Luia: Item data: ", itemData);
       const globalWishId = itemData.linkToGlobalWishId ?? itemId;
       const globalRef = db.collection("all_wishes_global").doc(globalWishId);
+      const previousGlobalWishId = change.before.exists?
+        (change.before.data() as ItemData | undefined)?.globalWishId:
+        undefined;
+      const isSameGlobalWish = previousGlobalWishId === globalWishId;
+
       // Verificar si el deseo global ya existe
       const globalDoc = await globalRef.get();
       const isNewGlobalWish = !globalDoc.exists;
@@ -116,27 +122,47 @@ export const syncItemsToGlobalList = functions
           {merge: true}
         );
         logger.info(`Luia: Nuevo deseo global creado: ${globalWishId}`);
-      } else {
-        // Incrementar contador de compartidos
+      } else if (!isSameGlobalWish) {
         await globalRef.update({
           sharedCount: admin.firestore.FieldValue.increment(1),
-          name: itemData.name, // Actualizar datos por si cambiaron
+          name: itemData.name,
           productUrl: itemData.productUrl,
           imageUrl: itemData.imageUrl,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        logger.info(`Luia: Deseo global existente actualizado: 
-          ${globalWishId}, contador incrementado`);
+        logger.info(`Luia: Deseo global existente actualizado: ${globalWishId}, 
+          contador incrementado`);
+      } else {
+        await globalRef.set(
+          {
+            name: itemData.name,
+            productUrl: itemData.productUrl,
+            imageUrl: itemData.imageUrl,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          {merge: true}
+        );
+        logger.info(`Luia: Cambio de metadatos del mismo deseo global 
+          detectado;  se omite el incremento de sharedCount.`);
       }
       const originalItemRef = db.collection("users").doc(userId)
         .collection("wishlists").doc(wishlistId)
         .collection("items").doc(itemId);
-      await originalItemRef.update({
-        globalWishId: globalWishId,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      logger.info(`Luia: Ítem ${itemId} sincronizado 
-        globalmente con ID: ${globalWishId}`);
+
+      if (!isSameGlobalWish) {
+        await originalItemRef.set(
+          {
+            globalWishId,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          {merge: true}
+        );
+        logger.info(`Luia: Ítem ${itemId} sincronizado globalmente con ID: 
+          ${globalWishId}`);
+      } else {
+        logger.info(`Luia: Ítem ${itemId} ya estaba sincronizado con 
+          ${globalWishId}; se omite la escritura de vuelta.`);
+      }
     }
   );
 

@@ -17,8 +17,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    final firebaseOptions = DefaultFirebaseOptions.currentPlatform;
+    debugPrint('Firebase init: project=${firebaseOptions.projectId} appId=${firebaseOptions.appId}');
     await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+      options: firebaseOptions,
     );
     // Esta es la línea mágica para Flutter
     FirebaseFirestore.instance.settings = const Settings(
