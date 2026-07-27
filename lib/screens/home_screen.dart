@@ -11,10 +11,9 @@ import 'package:luia/auth/user_auth.dart';
 import 'package:luia/dao/notification_dao.dart';
 import 'package:luia/intent/android_intent.dart';
 import 'package:luia/models/wish_item.dart';
-import 'package:luia/models/wish_list.dart';
 import 'package:luia/screens/notification/notification_list_screen.dart';
 import 'package:luia/screens/wish/add_wish_screen.dart';
-import 'package:luia/widgets/compact_wish_card.dart';
+import 'package:luia/widgets/catalog_wish_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -112,25 +111,31 @@ class _HomeScreenState extends State<HomeScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data?.docs ?? [];
+          final docs = [...?snapshot.data?.docs];
           if (docs.isEmpty) {
             return const Center(child: Text('No hay deseos globales.'));
           }
 
-          return ListView.builder(
+          docs.sort((first, second) {
+            final firstHasImage = _hasUsableImage(first);
+            final secondHasImage = _hasUsableImage(second);
+            if (firstHasImage == secondHasImage) return 0;
+            return firstHasImage ? -1 : 1;
+          });
+
+          return GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              mainAxisExtent: 278,
+            ),
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final doc = docs[index];
               final wishItem = WishItem.fromFirestore(doc);
-              final data = doc.data() as Map<String, dynamic>;
-              
-              final wishList = WishList(
-                ownerId: data['ownerId'] ?? '',
-                name: 'Global',
-                privacy: ListPrivacy.public,
-                itemCount: 0,
-              )..id = data['originalWishlistId'];
-              return CompactWishCard(
+              return CatalogWishCard(
                 wishItem: wishItem,
               );
             },
@@ -138,6 +143,15 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
+  }
+
+  bool _hasUsableImage(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final imageUrl = data['imageUrl'] as String?;
+    final uri = imageUrl == null ? null : Uri.tryParse(imageUrl.trim());
+    return uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
   }
 
   void _fetchNotificationsCount() {

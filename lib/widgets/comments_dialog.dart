@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:luia/auth/user_auth.dart';
 import 'package:luia/dao/wish_list_dao.dart';
 import 'package:luia/models/comment.dart';
+import 'package:luia/utils/comment_date_formatter.dart';
 import 'package:luia/models/wish_item.dart';
 
 class CommentsDialog extends StatefulWidget {
@@ -127,7 +128,7 @@ class _CommentsDialogState extends State<CommentsDialog> {
                                       ),
                                       const Spacer(),
                                       Text(
-                                        _formatDate(comment.createdAt),
+                                        formatCommentDate(comment.createdAt),
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey,
@@ -166,18 +167,4 @@ class _CommentsDialogState extends State<CommentsDialog> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays} d';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} h';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} min';
-    } else {
-      return 'Ahora';
-    }
-  }
 }

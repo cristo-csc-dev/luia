@@ -19,6 +19,13 @@ class CompactWishCard extends StatelessWidget {
     required this.wishItem,
   });
 
+  static Future<void> addToUserList(
+    BuildContext context,
+    WishItem wishItem,
+  ) async {
+    return CompactWishCard(wishItem: wishItem)._addToUserList(context);
+  }
+
   Future<void> _addToUserList(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || !user.emailVerified) {
