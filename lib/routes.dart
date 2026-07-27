@@ -6,6 +6,7 @@ import 'package:luia/screens/contacts/edit_contact_screen.dart';
 import 'package:luia/screens/contacts/friend_list_overview_screen.dart';
 import 'package:luia/screens/home_screen.dart';
 import 'package:luia/screens/login/create_user_screen.dart';
+import 'package:luia/screens/login/email_verification_screen.dart';
 import 'package:luia/screens/login/login_screen.dart';
 import 'package:luia/screens/user/user_profile_screen.dart';
 import 'package:luia/screens/wish/my_ihaveit_screen.dart';
@@ -25,9 +26,13 @@ GoRouter getRouter(UserAuth userAuth) => GoRouter(
     final isLoggedIn = userAuth.isAuthenticated;
     final isGoingToLogin = state.uri.toString() == '/login';
     final isGoingToSignup = state.uri.toString() == '/login/signup';
+    final isGoingToVerification = state.uri.toString() == '/login/verify';
 
     // CASO 1: No está logueado y no está en login ni signup -> Mandar a Login
-    if (!isLoggedIn && !isGoingToLogin && !isGoingToSignup) {
+    if (!isLoggedIn &&
+        !isGoingToLogin &&
+        !isGoingToSignup &&
+        !isGoingToVerification) {
       return '/login';
     }
 
@@ -51,6 +56,10 @@ GoRouter getRouter(UserAuth userAuth) => GoRouter(
         GoRoute(
           path: '/signup',
           builder: (context, state) => const CreateUserScreen(),
+        ),
+        GoRoute(
+          path: '/verify',
+          builder: (context, state) => const EmailVerificationScreen(),
         ),
       ],
     ),

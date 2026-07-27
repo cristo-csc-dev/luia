@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_screen.dart'; // Importamos la pantalla de Login
+import 'package:go_router/go_router.dart';
 
 class EmailVerificationScreen extends StatelessWidget {
   const EmailVerificationScreen({super.key});
@@ -58,12 +58,7 @@ class EmailVerificationScreen extends StatelessWidget {
                 height: 50,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    // Navega a la pantalla de Login y elimina todas las rutas anteriores
-                    // (incluyendo la de crear usuario)
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (context) => const LoginScreen()),
-                      (Route<dynamic> route) => false,
-                    );
+                    context.go('/login');
                   },
                   icon: const Icon(Icons.login),
                   label: const Text(

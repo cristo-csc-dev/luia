@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:luia/auth/user_auth.dart';
+import 'package:go_router/go_router.dart';
 import 'package:luia/dao/user_dao.dart';
-import 'package:luia/screens/login/email_verification_screen.dart';
 
 class CreateUserScreen extends StatefulWidget {
   const CreateUserScreen({super.key});
@@ -44,15 +43,12 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
 
       //await UserAuth.instance.sendEmailVerification(userCredential);
       await UserDao().createUser(userCredential.user!.uid, _emailController.text, '');
-      FirebaseAuth.instance.signOut();
+      await FirebaseAuth.instance.signOut();
       
       // Al registrar, navega automáticamente a la pantalla principal
       // debido al StreamBuilder en main.dart. Cierra la pantalla de registro.
       if(mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const EmailVerificationScreen()),
-          (Route<dynamic> route) => false,
-        );
+        context.go('/login/verify');
       }
     } on FirebaseAuthException catch (e) {
       String message;
