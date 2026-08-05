@@ -1,20 +1,63 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:luia/dao/wish_list_dao.dart';
 import 'package:luia/models/wish_item.dart';
 import 'package:luia/widgets/comments_dialog.dart';
 import 'package:luia/widgets/compact_wish_card.dart';
 
-class CatalogWishCard extends StatelessWidget {
+class CatalogWishCard extends StatefulWidget {
   final WishItem wishItem;
 
   const CatalogWishCard({super.key, required this.wishItem});
+
+  @override
+  State<CatalogWishCard> createState() => _CatalogWishCardState();
+}
+
+class _CatalogWishCardState extends State<CatalogWishCard> {
+  bool? _isInUserList;
+
+  WishItem get wishItem => widget.wishItem;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadListMembership();
+  }
+
+  Future<void> _loadListMembership() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || !user.emailVerified) {
+      if (mounted) setState(() => _isInUserList = false);
+      return;
+    }
+
+    try {
+      final isInList = await WishlistDao().isGlobalWishInAnyList(
+        user.uid,
+        wishItem.id,
+      );
+      if (mounted) setState(() => _isInUserList = isInList);
+    } catch (_) {
+      if (mounted) setState(() => _isInUserList = null);
+    }
+  }
+
+  Future<void> _addToUserList() async {
+    final wasAdded = await CompactWishCard.addToUserList(context, wishItem);
+    if (wasAdded && mounted) {
+      setState(() => _isInUserList = true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final uri = wishItem.imageUrl == null
         ? null
         : Uri.tryParse(wishItem.imageUrl!.trim());
-    final hasImage = uri != null &&
+    final hasImage =
+        uri != null &&
         (uri.scheme == 'http' || uri.scheme == 'https') &&
         uri.host.isNotEmpty;
 
@@ -42,7 +85,7 @@ class CatalogWishCard extends StatelessWidget {
                               width: double.infinity,
                               height: double.infinity,
                               fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              errorBuilder: (_, _, _) => const Icon(
                                 Icons.image_not_supported_outlined,
                                 color: Colors.grey,
                                 size: 42,
@@ -89,11 +132,10 @@ class CatalogWishCard extends StatelessWidget {
                 _Action(
                   icon: Icons.playlist_add,
                   count: wishItem.sharedCount,
-                  color: Colors.green.shade600,
-                  onPressed: () => CompactWishCard.addToUserList(
-                    context,
-                    wishItem,
-                  ),
+                  color: _isInUserList == false
+                      ? Colors.green.shade600
+                      : Colors.grey.shade500,
+                  onPressed: _isInUserList == false ? _addToUserList : null,
                 ),
               ],
             ),
@@ -108,7 +150,7 @@ class _Action extends StatelessWidget {
   final IconData icon;
   final int count;
   final Color color;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const _Action({
     required this.icon,

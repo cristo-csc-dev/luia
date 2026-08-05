@@ -23,12 +23,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-
   String _sharedLink = "{}";
   static const platform = MethodChannel('com.luia/channel');
   StreamSubscription? _notificationCountSubscription;
   StreamSubscription<User?>? _userChangesSubscription;
-
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   int _pendingRequestsCount = 0;
@@ -52,7 +50,11 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Luia'),
         leading: Builder(
           builder: (context) => IconButton(
-            icon: _getDrawerHeader(UserAuth().isUserAuthenticated() ? UserAuth().getCurrentUser() : null).currentAccountPicture!,
+            icon: _getDrawerHeader(
+              UserAuth().isUserAuthenticated()
+                  ? UserAuth().getCurrentUser()
+                  : null,
+            ).currentAccountPicture!,
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
@@ -86,10 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     child: Text(
                       '$_pendingRequestsCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 8,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 8),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -136,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
               final doc = docs[index];
               final wishItem = WishItem.fromFirestore(doc);
               return CatalogWishCard(
+                key: ValueKey('${_auth.currentUser?.uid}:${wishItem.id}'),
                 wishItem: wishItem,
               );
             },
@@ -156,20 +156,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _fetchNotificationsCount() {
     if (UserAuth.instance.isUserAuthenticatedAndVerified()) {
-      _notificationCountSubscription =
-      NotificationDao().getNotificationsCount().listen((QuerySnapshot snapshot) {
-        if (mounted) { // 3. Opcional, pero buena práctica: comprobar 'mounted' antes de setState
-          setState(() {
-            _pendingRequestsCount = snapshot.docs.length;
-          });
-        }
-      }, onError: (error) {
-          if (mounted) {
-              setState(() {
-                   _pendingRequestsCount = 0;
-              });
-          }
-      });
+      _notificationCountSubscription = NotificationDao()
+          .getNotificationsCount()
+          .listen(
+            (QuerySnapshot snapshot) {
+              if (mounted) {
+                // 3. Opcional, pero buena práctica: comprobar 'mounted' antes de setState
+                setState(() {
+                  _pendingRequestsCount = snapshot.docs.length;
+                });
+              }
+            },
+            onError: (error) {
+              if (mounted) {
+                setState(() {
+                  _pendingRequestsCount = 0;
+                });
+              }
+            },
+          );
     }
   }
 
@@ -193,17 +198,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildAppDrawer() {
-
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
         children: <Widget>[
-          _getDrawerHeader(UserAuth().isUserAuthenticated() ? UserAuth().getCurrentUser() : null),
+          _getDrawerHeader(
+            UserAuth().isUserAuthenticated()
+                ? UserAuth().getCurrentUser()
+                : null,
+          ),
           ListTile(
             leading: const Icon(Icons.edit, color: Colors.indigo),
             title: const Text('Perfil'),
             onTap: () {
-              Navigator.pop(context); 
+              Navigator.pop(context);
               context.go('/home/profile');
             },
           ),
@@ -211,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
             leading: const Icon(Icons.list, color: Colors.indigo),
             title: const Text('Mis listas'),
             onTap: () {
-              Navigator.pop(context); 
+              Navigator.pop(context);
               context.go('/home/wishlists/mine');
             },
           ),
@@ -228,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
             leading: const Icon(Icons.people, color: Colors.indigo),
             title: const Text('Contactos'),
             onTap: () {
-              Navigator.pop(context); 
+              Navigator.pop(context);
               context.go('/home/contacts');
             },
           ),
@@ -252,25 +260,20 @@ class _HomeScreenState extends State<HomeScreen> {
       accountEmail: Text(user?.email ?? ""),
       currentAccountPicture: CircleAvatar(
         backgroundColor: Colors.white,
-        backgroundImage:
-            user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
+        backgroundImage: user?.photoURL != null
+            ? NetworkImage(user!.photoURL!)
+            : null,
         child: user?.photoURL == null
-            ? const Icon(
-                Icons.person_outline,
-                size: 40,
-                color: Colors.blueGrey,
-              )
+            ? const Icon(Icons.person_outline, size: 40, color: Colors.blueGrey)
             : null,
       ),
-      decoration: const BoxDecoration(
-        color: Colors.blueGrey,
-      ),
+      decoration: const BoxDecoration(color: Colors.blueGrey),
     );
   }
 
   @override
   void dispose() {
-    _notificationCountSubscription?.cancel(); 
+    _notificationCountSubscription?.cancel();
     _userChangesSubscription?.cancel();
     super.dispose();
   }

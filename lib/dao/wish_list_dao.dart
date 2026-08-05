@@ -16,38 +16,65 @@ class WishlistDao {
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> getWishlistsStreamSnapshot(String userId) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getWishlistsStreamSnapshot(
+    String userId,
+  ) {
     return _db
-      .collection('users')
-      .doc(userId)
-      .collection('wishlists')
-      .snapshots();
+        .collection('users')
+        .doc(userId)
+        .collection('wishlists')
+        .snapshots();
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> getSharedWishlistsStreamSnapshot(String userId) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getSharedWishlistsStreamSnapshot(
+    String userId,
+  ) {
     if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
       throw Exception('Usuario no autenticado.');
     }
     return _db
-      .collection('users')
-      .doc(userId)
-      .collection('wishlists')
-      .where(
-        Filter.and(
-          Filter.or(
-            Filter('sharedWithContactIds', arrayContains: UserAuth.instance.getCurrentUser().uid),
-            Filter('privacy', isEqualTo: 'public')
-          ), 
-          Filter('ownerId', isEqualTo: userId)
+        .collection('users')
+        .doc(userId)
+        .collection('wishlists')
+        .where(
+          Filter.and(
+            Filter.or(
+              Filter(
+                'sharedWithContactIds',
+                arrayContains: UserAuth.instance.getCurrentUser().uid,
+              ),
+              Filter('privacy', isEqualTo: 'public'),
+            ),
+            Filter('ownerId', isEqualTo: userId),
+          ),
         )
-      ).snapshots();
+        .snapshots();
   }
 
-  Future<QuerySnapshot<Map<String, dynamic>>> getWishlistsStream(String userId) {
-    return _db
-      .collection('users')
-      .doc(userId)
-      .collection('wishlists').get();
+  Future<QuerySnapshot<Map<String, dynamic>>> getWishlistsStream(
+    String userId,
+  ) {
+    return _db.collection('users').doc(userId).collection('wishlists').get();
+  }
+
+  Future<bool> isGlobalWishInAnyList(String userId, String globalWishId) async {
+    final wishlists = await _db
+        .collection('users')
+        .doc(userId)
+        .collection('wishlists')
+        .get();
+
+    final matches = await Future.wait(
+      wishlists.docs.map(
+        (wishlist) => wishlist.reference
+            .collection('items')
+            .where('sourceGlobalWishId', isEqualTo: globalWishId)
+            .limit(1)
+            .get(),
+      ),
+    );
+
+    return matches.any((snapshot) => snapshot.docs.isNotEmpty);
   }
 
   Future<String> createWishlist(Map<String, dynamic> wishlistData) async {
@@ -56,10 +83,10 @@ class WishlistDao {
     }
     try {
       DocumentReference newWishList = await _db
-        .collection('users')
-        .doc(UserAuth.instance.getCurrentUser().uid)
-        .collection('wishlists')
-        .add(wishlistData);
+          .collection('users')
+          .doc(UserAuth.instance.getCurrentUser().uid)
+          .collection('wishlists')
+          .add(wishlistData);
       return newWishList.id;
     } catch (e) {
       // Devolvemos el error para que el UI pueda manejarlo
@@ -74,9 +101,10 @@ class WishlistDao {
       }
       await _db.runTransaction((transaction) async {
         final wishlistRef = _db
-          .collection('users')
-          .doc(UserAuth.instance.getCurrentUser().uid)
-          .collection('wishlists').doc(wishlistId);
+            .collection('users')
+            .doc(UserAuth.instance.getCurrentUser().uid)
+            .collection('wishlists')
+            .doc(wishlistId);
         CollectionReference itemsRef = wishlistRef.collection('items');
 
         // Añadimos timestamp para poder ordenar por fecha añadida
@@ -96,19 +124,23 @@ class WishlistDao {
     }
   }
 
-  Future<void> updateItem(String wishlistId, String itemId,  Map<String, dynamic> itemData) async {
+  Future<void> updateItem(
+    String wishlistId,
+    String itemId,
+    Map<String, dynamic> itemData,
+  ) async {
     if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
       throw Exception('Usuario no autenticado.');
     }
     try {
       await _db
-        .collection('users')
-        .doc(UserAuth.instance.getCurrentUser().uid)
-        .collection('wishlists')
-        .doc(wishlistId)
-        .collection('items')
-        .doc(itemId)
-        .set(itemData, SetOptions(merge: true));
+          .collection('users')
+          .doc(UserAuth.instance.getCurrentUser().uid)
+          .collection('wishlists')
+          .doc(wishlistId)
+          .collection('items')
+          .doc(itemId)
+          .set(itemData, SetOptions(merge: true));
     } catch (e) {
       // Devolvemos el error para que el UI pueda manejarlo
       throw Exception('Error al actualizar el deseo: $e');
@@ -122,10 +154,10 @@ class WishlistDao {
     try {
       await _db.runTransaction((transaction) async {
         final wishlistRef = _db
-          .collection('users')
-          .doc(UserAuth.instance.getCurrentUser().uid)
-          .collection('wishlists')
-          .doc(wishlistId);
+            .collection('users')
+            .doc(UserAuth.instance.getCurrentUser().uid)
+            .collection('wishlists')
+            .doc(wishlistId);
         CollectionReference itemsRef = wishlistRef.collection('items');
         await itemsRef.doc(itemId).delete();
 
@@ -154,22 +186,27 @@ class WishlistDao {
     try {
       await _db.runTransaction((transaction) async {
         final sourceItemRef = _db
-          .collection('users')
-          .doc(sourceUserId)
-          .collection('wishlists')
-          .doc(wishlistId)
-          .collection('items')
-          .doc(itemId);
+            .collection('users')
+            .doc(sourceUserId)
+            .collection('wishlists')
+            .doc(wishlistId)
+            .collection('items')
+            .doc(itemId);
 
         final sourceSnapshot = await transaction.get(sourceItemRef);
         if (!sourceSnapshot.exists) {
           throw Exception('Deseo no encontrado.');
         }
 
-        final sourceData = Map<String, dynamic>.from(sourceSnapshot.data() as Map<String, dynamic>);
+        final sourceData = Map<String, dynamic>.from(
+          sourceSnapshot.data() as Map<String, dynamic>,
+        );
 
         final currentUserId = UserAuth.instance.getCurrentUser().uid;
-        final destCollection = _db.collection('users').doc(currentUserId).collection('ihaveit');
+        final destCollection = _db
+            .collection('users')
+            .doc(currentUserId)
+            .collection('ihaveit');
         final newDocRef = destCollection.doc();
 
         // Preparar datos del claim
@@ -196,50 +233,62 @@ class WishlistDao {
 
         // Eliminar item original de la wishlist y decrementar el contador en la wishlist
         final wishlistRef = _db
-          .collection('users')
-          .doc(sourceUserId)
-          .collection('wishlists')
-          .doc(wishlistId);
+            .collection('users')
+            .doc(sourceUserId)
+            .collection('wishlists')
+            .doc(wishlistId);
 
         final alreadyTaken = sourceData['isTaken'] == true;
         if (alreadyTaken) {
-          throw Exception('El deseo ya fue marcado como obtenido por otra persona.');
+          throw Exception(
+            'El deseo ya fue marcado como obtenido por otra persona.',
+          );
         }
 
         transaction.delete(sourceItemRef);
-        transaction.update(wishlistRef, {'itemCount': FieldValue.increment(-1)});
+        transaction.update(wishlistRef, {
+          'itemCount': FieldValue.increment(-1),
+        });
       });
     } catch (e) {
       throw Exception('Error al mover el deseo: $e');
     }
   }
 
-  Future<void> createOrUpdateWishlist(String id, Map<String, Object> map) async {
+  Future<void> createOrUpdateWishlist(
+    String id,
+    Map<String, Object> map,
+  ) async {
     if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
       throw Exception('Usuario no autenticado.');
     }
     await _db
-      .collection('users')
-      .doc(UserAuth.instance.getCurrentUser().uid)
-      .collection('wishlists')
-      .doc(id)
-      .set(map, SetOptions(merge: true));
+        .collection('users')
+        .doc(UserAuth.instance.getCurrentUser().uid)
+        .collection('wishlists')
+        .doc(id)
+        .set(map, SetOptions(merge: true));
   }
 
-  Future<DocumentSnapshot<Map<String, dynamic>>> getContactWishlistById(String wishListId, String? userId) async {
+  Future<DocumentSnapshot<Map<String, dynamic>>> getContactWishlistById(
+    String wishListId,
+    String? userId,
+  ) async {
     if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
       throw Exception('Usuario no autenticado.');
     }
     String userIdToUse = userId ?? UserAuth.instance.getCurrentUser().uid;
     return await _db
-      .collection('users')
-      .doc(userIdToUse)
-      .collection('wishlists')
-      .doc(wishListId)
-      .get();
+        .collection('users')
+        .doc(userIdToUse)
+        .collection('wishlists')
+        .doc(wishListId)
+        .get();
   }
 
-  Future<DocumentSnapshot<Map<String, dynamic>>> getWishlistById(String wishListId) async {
+  Future<DocumentSnapshot<Map<String, dynamic>>> getWishlistById(
+    String wishListId,
+  ) async {
     if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
       throw Exception('Usuario no autenticado.');
     }
@@ -248,11 +297,11 @@ class WishlistDao {
     }
     String userIdToUse = UserAuth.instance.getCurrentUser().uid;
     return await _db
-      .collection('users')
-      .doc(userIdToUse)
-      .collection('wishlists')
-      .doc(wishListId)
-      .get();
+        .collection('users')
+        .doc(userIdToUse)
+        .collection('wishlists')
+        .doc(wishListId)
+        .get();
   }
 
   void deleteWishlist(String id) {
@@ -260,40 +309,49 @@ class WishlistDao {
       throw Exception('Usuario no autenticado.');
     }
     _db
-      .collection('users')
-      .doc(UserAuth.instance.getCurrentUser().uid)
-      .collection('wishlists')
-      .doc(id)
-      .delete();
+        .collection('users')
+        .doc(UserAuth.instance.getCurrentUser().uid)
+        .collection('wishlists')
+        .doc(id)
+        .delete();
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> getListItems(String userId, WishList currentWishList, {String? orderByField, bool descending = true, bool includeTaken = false}) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> getListItems(
+    String userId,
+    WishList currentWishList, {
+    String? orderByField,
+    bool descending = true,
+    bool includeTaken = false,
+  }) {
     if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
       throw Exception('Usuario no autenticado.');
     }
 
     Query<Map<String, dynamic>> collectionRef = _db
-      .collection('users')
-      .doc(userId)
-      .collection('wishlists')
-      .doc(currentWishList.id)
-      .collection('items');
+        .collection('users')
+        .doc(userId)
+        .collection('wishlists')
+        .doc(currentWishList.id)
+        .collection('items');
 
     // if (!includeTaken) {
     //   collectionRef = collectionRef.where('isTaken', isEqualTo: false);
     // }
 
     if (orderByField != null && orderByField.isNotEmpty) {
-      return collectionRef.orderBy(orderByField, descending: descending).snapshots();
+      return collectionRef
+          .orderBy(orderByField, descending: descending)
+          .snapshots();
     }
 
     return collectionRef.snapshots();
   }
 
   Future<WishItem> getGlobalWish({required String wishItemId}) async {
-    DocumentSnapshot<Map<String, dynamic>> wishMap = await _db.collection('all_wishes_global')
-      .doc(wishItemId)
-      .get();
+    DocumentSnapshot<Map<String, dynamic>> wishMap = await _db
+        .collection('all_wishes_global')
+        .doc(wishItemId)
+        .get();
     return WishItem.fromFirestore(wishMap);
   }
 
@@ -304,7 +362,11 @@ class WishlistDao {
     required String userName,
     required String text,
   }) async {
-    final commentRef = _db.collection('all_wishes_global').doc(wishId).collection('comments').doc();
+    final commentRef = _db
+        .collection('all_wishes_global')
+        .doc(wishId)
+        .collection('comments')
+        .doc();
     await commentRef.set({
       'wishId': wishId,
       'userId': userId,
@@ -320,9 +382,11 @@ class WishlistDao {
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> getCommentsStream(String wishId) {
-    return _db.collection('all_wishes_global').doc(wishId).collection('comments')
-      .orderBy('createdAt', descending: true)
-      .snapshots();
+    return _db
+        .collection('all_wishes_global')
+        .doc(wishId)
+        .collection('comments')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
   }
-
 }

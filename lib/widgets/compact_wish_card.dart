@@ -14,25 +14,26 @@ import 'package:uuid/uuid.dart';
 class CompactWishCard extends StatelessWidget {
   final WishItem wishItem;
 
-  const CompactWishCard({
-    super.key,
-    required this.wishItem,
-  });
+  const CompactWishCard({super.key, required this.wishItem});
 
-  static Future<void> addToUserList(
+  static Future<bool> addToUserList(
     BuildContext context,
     WishItem wishItem,
   ) async {
     return CompactWishCard(wishItem: wishItem)._addToUserList(context);
   }
 
-  Future<void> _addToUserList(BuildContext context) async {
+  Future<bool> _addToUserList(BuildContext context) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || !user.emailVerified) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inicia sesión para guardar el artículo en tus listas.')),
+        const SnackBar(
+          content: Text(
+            'Inicia sesión para guardar el artículo en tus listas.',
+          ),
+        ),
       );
-      return;
+      return false;
     }
 
     final wishlistsSnapshot = await FirebaseFirestore.instance
@@ -41,7 +42,7 @@ class CompactWishCard extends StatelessWidget {
         .collection('wishlists')
         .get();
 
-    if (!context.mounted) return;
+    if (!context.mounted) return false;
 
     final selectedList = await showDialog<WishList?>(
       context: context,
@@ -55,7 +56,7 @@ class CompactWishCard extends StatelessWidget {
       },
     );
 
-    if (selectedList == null || selectedList.id == null) return;
+    if (selectedList == null || selectedList.id == null) return false;
 
     try {
       await WishlistDao().addItem(selectedList.id!, {
@@ -68,19 +69,24 @@ class CompactWishCard extends StatelessWidget {
         'priority': wishItem.priority,
         'isBought': false,
         'isTaken': false,
-        'storeOptions': wishItem.storeOptions?.map((option) => option.toMap()).toList(),
+        'storeOptions': wishItem.storeOptions
+            ?.map((option) => option.toMap())
+            .toList(),
+        'globalWishId': wishItem.id,
         'sourceGlobalWishId': wishItem.id,
       });
 
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Añadido a ${selectedList.name}')),
-      );
+      if (!context.mounted) return true;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Añadido a ${selectedList.name}')));
+      return true;
     } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo guardar: $e')),
-      );
+      if (!context.mounted) return false;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No se pudo guardar: $e')));
+      return false;
     }
   }
 
@@ -88,9 +94,7 @@ class CompactWishCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 2,
       child: Column(
         children: [
@@ -105,7 +109,8 @@ class CompactWishCard extends StatelessWidget {
               child: Row(
                 children: [
                   // Imagen del deseo
-                  if (wishItem.imageUrl != null && wishItem.imageUrl!.isNotEmpty)
+                  if (wishItem.imageUrl != null &&
+                      wishItem.imageUrl!.isNotEmpty)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
@@ -158,7 +163,8 @@ class CompactWishCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        if (wishItem.productUrl != null && wishItem.productUrl!.isNotEmpty)
+                        if (wishItem.productUrl != null &&
+                            wishItem.productUrl!.isNotEmpty)
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
@@ -171,9 +177,15 @@ class CompactWishCard extends StatelessWidget {
                               icon: const Icon(Icons.open_in_new, size: 16),
                               label: const Text('Ver en web'),
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                  horizontal: 12,
+                                ),
                                 textStyle: const TextStyle(fontSize: 12),
-                                minimumSize: const Size(0, 32), // Permite ancho mínimo
+                                minimumSize: const Size(
+                                  0,
+                                  32,
+                                ), // Permite ancho mínimo
                               ),
                             ),
                           ),
@@ -189,7 +201,11 @@ class CompactWishCard extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  icon: Icon(Icons.comment, size: 18, color: Colors.blue.shade600),
+                  icon: Icon(
+                    Icons.comment,
+                    size: 18,
+                    color: Colors.blue.shade600,
+                  ),
                   onPressed: () {
                     showDialog(
                       context: context,
@@ -200,16 +216,34 @@ class CompactWishCard extends StatelessWidget {
                   constraints: const BoxConstraints(),
                 ),
                 const SizedBox(width: 4),
-                Text('${wishItem.commentCount}', style: TextStyle(fontSize: 14, color: Colors.blue.shade600, fontWeight: FontWeight.w500)),
+                Text(
+                  '${wishItem.commentCount}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.blue.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(width: 16),
                 IconButton(
-                  icon: Icon(Icons.list, size: 18, color: Colors.green.shade600),
+                  icon: Icon(
+                    Icons.list,
+                    size: 18,
+                    color: Colors.green.shade600,
+                  ),
                   onPressed: () => _addToUserList(context),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
                 const SizedBox(width: 4),
-                Text('${wishItem.sharedCount}', style: TextStyle(fontSize: 14, color: Colors.green.shade600, fontWeight: FontWeight.w500)),
+                Text(
+                  '${wishItem.sharedCount}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.green.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -263,7 +297,9 @@ class _AddToListDialogState extends State<_AddToListDialog> {
       await WishlistDao().createOrUpdateWishlist(listId, {
         'name': _nameController.text.trim(),
         'privacy': _selectedPrivacy.toString().split('.').last,
-        'sharedWithContactIds': _selectedPrivacy == ListPrivacy.shared ? _selectedContactIds : [],
+        'sharedWithContactIds': _selectedPrivacy == ListPrivacy.shared
+            ? _selectedContactIds
+            : [],
         'ownerId': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
         'itemCount': 0,
@@ -275,16 +311,18 @@ class _AddToListDialogState extends State<_AddToListDialog> {
         name: _nameController.text.trim(),
         privacy: _selectedPrivacy,
         itemCount: 0,
-        sharedWithContactIds: _selectedPrivacy == ListPrivacy.shared ? _selectedContactIds : [],
+        sharedWithContactIds: _selectedPrivacy == ListPrivacy.shared
+            ? _selectedContactIds
+            : [],
       );
 
       if (!mounted) return;
       Navigator.pop(context, createdList);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo crear la lista: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No se pudo crear la lista: $e')));
     } finally {
       if (mounted) setState(() => _isCreating = false);
     }
@@ -308,7 +346,10 @@ class _AddToListDialogState extends State<_AddToListDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (widget.existingLists.isNotEmpty) ...[
-                const Text('Listas existentes', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text(
+                  'Listas existentes',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 ...widget.existingLists.map((wishlist) {
                   return ListTile(
@@ -319,7 +360,10 @@ class _AddToListDialogState extends State<_AddToListDialog> {
                 }),
                 const Divider(height: 24),
               ],
-              const Text('Crear una nueva lista', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'Crear una nueva lista',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
               Form(
                 key: _formKey,
@@ -366,7 +410,8 @@ class _AddToListDialogState extends State<_AddToListDialog> {
                               content: SingleChildScrollView(
                                 child: Column(
                                   children: _contacts.map((contact) {
-                                    final selected = _selectedContactIds.contains(contact.id);
+                                    final selected = _selectedContactIds
+                                        .contains(contact.id);
                                     return CheckboxListTile(
                                       value: selected,
                                       title: Text(contact.name ?? '--'),
@@ -376,10 +421,13 @@ class _AddToListDialogState extends State<_AddToListDialog> {
                                           if (value == true) {
                                             _selectedContactIds.add(contact.id);
                                           } else {
-                                            _selectedContactIds.remove(contact.id);
+                                            _selectedContactIds.remove(
+                                              contact.id,
+                                            );
                                           }
                                         });
-                                        (dialogContext as Element).markNeedsBuild();
+                                        (dialogContext as Element)
+                                            .markNeedsBuild();
                                       },
                                     );
                                   }).toList(),
@@ -387,7 +435,10 @@ class _AddToListDialogState extends State<_AddToListDialog> {
                               ),
                               actions: [
                                 TextButton(
-                                  onPressed: () => Navigator.pop(dialogContext, _selectedContactIds),
+                                  onPressed: () => Navigator.pop(
+                                    dialogContext,
+                                    _selectedContactIds,
+                                  ),
                                   child: const Text('Confirmar'),
                                 ),
                               ],
@@ -404,7 +455,11 @@ class _AddToListDialogState extends State<_AddToListDialog> {
                         Wrap(
                           spacing: 8,
                           children: _selectedContactIds.map((id) {
-                            final contact = _contacts.firstWhere((c) => c.id == id, orElse: () => Contact(id: id, name: 'Contacto', email: ''));
+                            final contact = _contacts.firstWhere(
+                              (c) => c.id == id,
+                              orElse: () =>
+                                  Contact(id: id, name: 'Contacto', email: ''),
+                            );
                             return Chip(label: Text(contact.name ?? '--'));
                           }).toList(),
                         ),
@@ -424,7 +479,11 @@ class _AddToListDialogState extends State<_AddToListDialog> {
         ElevatedButton(
           onPressed: _isCreating ? null : _createAndSelectList,
           child: _isCreating
-              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Text('Crear y usar'),
         ),
       ],

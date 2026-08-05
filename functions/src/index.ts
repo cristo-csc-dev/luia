@@ -78,12 +78,15 @@ export const syncItemsToGlobalList = functions
       if (!change.after.exists) {
         // Obtener el globalWishId del documento eliminado
         const beforeData = change.before.data() as ItemData;
-        const globalWishIdToDelete = beforeData?.linkToGlobalWishId ?? itemId;
+        const globalWishIdToDelete = beforeData?.linkToGlobalWishId ??
+          beforeData?.globalWishId ?? itemId;
         const globalRefToDelete =
         db.collection("all_wishes_global").doc(globalWishIdToDelete);
         // Decrementar contador (nunca eliminar el documento global)
         await globalRefToDelete.update({
           sharedCount: admin.firestore.FieldValue.increment(-1),
+          originalWishlistId: admin.firestore.FieldValue.delete(),
+          ownerId: admin.firestore.FieldValue.delete(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         logger.info(`Luia: Deseo global ${globalWishIdToDelete} 
@@ -95,7 +98,8 @@ export const syncItemsToGlobalList = functions
       // 2. Manejo de CREACIÓN o ACTUALIZACIÓN
       const itemData = change.after.data() as ItemData;
       logger.info("Luia: Item data: ", itemData);
-      const globalWishId = itemData.linkToGlobalWishId ?? itemId;
+      const globalWishId = itemData.linkToGlobalWishId ??
+        itemData.globalWishId ?? itemId;
       const globalRef = db.collection("all_wishes_global").doc(globalWishId);
       const previousGlobalWishId = change.before.exists?
         (change.before.data() as ItemData | undefined)?.globalWishId:
@@ -113,8 +117,6 @@ export const syncItemsToGlobalList = functions
             name: itemData.name,
             productUrl: itemData.productUrl,
             imageUrl: itemData.imageUrl,
-            originalWishlistId: wishlistId,
-            ownerId: userId,
             sharedCount: 1,
             commentCount: 0,
             flattenedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -128,6 +130,8 @@ export const syncItemsToGlobalList = functions
           name: itemData.name,
           productUrl: itemData.productUrl,
           imageUrl: itemData.imageUrl,
+          originalWishlistId: admin.firestore.FieldValue.delete(),
+          ownerId: admin.firestore.FieldValue.delete(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         logger.info(`Luia: Deseo global existente actualizado: ${globalWishId}, 
@@ -138,6 +142,8 @@ export const syncItemsToGlobalList = functions
             name: itemData.name,
             productUrl: itemData.productUrl,
             imageUrl: itemData.imageUrl,
+            originalWishlistId: admin.firestore.FieldValue.delete(),
+            ownerId: admin.firestore.FieldValue.delete(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
           {merge: true}
