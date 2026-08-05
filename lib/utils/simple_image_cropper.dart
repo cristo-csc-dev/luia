@@ -63,18 +63,25 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
 
     final containerSize = containerBox.size;
     final imageSize = Size(
-        _decodedImage!.width.toDouble(), _decodedImage!.height.toDouble());
+      _decodedImage!.width.toDouble(),
+      _decodedImage!.height.toDouble(),
+    );
 
     // Calculate the rect of the image as displayed on screen with BoxFit.contain
     final fittedSizes = applyBoxFit(BoxFit.contain, imageSize, containerSize);
     final destinationRect = Alignment.center.inscribe(
-        fittedSizes.destination, Rect.fromLTWH(0, 0, containerSize.width, containerSize.height));
+      fittedSizes.destination,
+      Rect.fromLTWH(0, 0, containerSize.width, containerSize.height),
+    );
 
-    // Set initial selection to be a centered rectangle.
+    // Set initial selection to be a centered square.
+    final side = (destinationRect.shortestSide * 0.8)
+        .clamp(1.0, double.infinity)
+        .toDouble();
     final initialSelection = Rect.fromCenter(
       center: destinationRect.center,
-      width: destinationRect.width * 0.8,
-      height: destinationRect.height * 0.8,
+      width: side,
+      height: side,
     );
 
     setState(() {
@@ -82,12 +89,100 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
     });
   }
 
+  Rect? _displayedImageRect() {
+    if (_decodedImage == null) return null;
+    final containerBox =
+        _imageContainerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (containerBox == null || !containerBox.hasSize) return null;
+
+    final imageSize = Size(
+      _decodedImage!.width.toDouble(),
+      _decodedImage!.height.toDouble(),
+    );
+    final fittedSizes = applyBoxFit(
+      BoxFit.contain,
+      imageSize,
+      containerBox.size,
+    );
+    return Alignment.center.inscribe(
+      fittedSizes.destination,
+      Offset.zero & containerBox.size,
+    );
+  }
+
+  Rect _squareFromAnchor(Offset anchor, Offset pointer) {
+    final imageRect = _displayedImageRect();
+    if (imageRect == null) return Rect.fromPoints(anchor, pointer);
+
+    final safeAnchor = Offset(
+      anchor.dx.clamp(imageRect.left, imageRect.right).toDouble(),
+      anchor.dy.clamp(imageRect.top, imageRect.bottom).toDouble(),
+    );
+    var growRight = pointer.dx >= safeAnchor.dx;
+    var growDown = pointer.dy >= safeAnchor.dy;
+    if (growRight && safeAnchor.dx == imageRect.right) growRight = false;
+    if (!growRight && safeAnchor.dx == imageRect.left) growRight = true;
+    if (growDown && safeAnchor.dy == imageRect.bottom) growDown = false;
+    if (!growDown && safeAnchor.dy == imageRect.top) growDown = true;
+
+    final horizontalDistance = (pointer.dx - safeAnchor.dx).abs();
+    final verticalDistance = (pointer.dy - safeAnchor.dy).abs();
+    final requestedSide = horizontalDistance > verticalDistance
+        ? horizontalDistance
+        : verticalDistance;
+    final horizontalLimit = growRight
+        ? imageRect.right - safeAnchor.dx
+        : safeAnchor.dx - imageRect.left;
+    final verticalLimit = growDown
+        ? imageRect.bottom - safeAnchor.dy
+        : safeAnchor.dy - imageRect.top;
+    final side = requestedSide
+        .clamp(
+          1.0,
+          horizontalLimit < verticalLimit ? horizontalLimit : verticalLimit,
+        )
+        .toDouble();
+
+    return Rect.fromLTWH(
+      growRight ? safeAnchor.dx : safeAnchor.dx - side,
+      growDown ? safeAnchor.dy : safeAnchor.dy - side,
+      side,
+      side,
+    );
+  }
+
+  Rect _shiftInsideImage(Rect rect, Offset delta) {
+    final imageRect = _displayedImageRect();
+    if (imageRect == null) return rect.shift(delta);
+
+    final shifted = rect.shift(delta);
+    final dx = shifted.left < imageRect.left
+        ? imageRect.left - shifted.left
+        : shifted.right > imageRect.right
+        ? imageRect.right - shifted.right
+        : 0.0;
+    final dy = shifted.top < imageRect.top
+        ? imageRect.top - shifted.top
+        : shifted.bottom > imageRect.bottom
+        ? imageRect.bottom - shifted.bottom
+        : 0.0;
+    return shifted.shift(Offset(dx, dy));
+  }
+
   /// Determines which resize handle, if any, is at a given local position.
   _ResizeHandle _getHandleAt(Offset local, Rect rect) {
-    if ((local - rect.topLeft).distance <= _handleHitTestSize) return _ResizeHandle.topLeft;
-    if ((local - rect.topRight).distance <= _handleHitTestSize) return _ResizeHandle.topRight;
-    if ((local - rect.bottomLeft).distance <= _handleHitTestSize) return _ResizeHandle.bottomLeft;
-    if ((local - rect.bottomRight).distance <= _handleHitTestSize) return _ResizeHandle.bottomRight;
+    if ((local - rect.topLeft).distance <= _handleHitTestSize) {
+      return _ResizeHandle.topLeft;
+    }
+    if ((local - rect.topRight).distance <= _handleHitTestSize) {
+      return _ResizeHandle.topRight;
+    }
+    if ((local - rect.bottomLeft).distance <= _handleHitTestSize) {
+      return _ResizeHandle.bottomLeft;
+    }
+    if ((local - rect.bottomRight).distance <= _handleHitTestSize) {
+      return _ResizeHandle.bottomRight;
+    }
     if (rect.contains(local)) return _ResizeHandle.center;
     return _ResizeHandle.none;
   }
@@ -102,23 +197,28 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
     if (containerBox == null) return null;
 
     final containerSize = containerBox.size;
-    final imageSize =
-        Size(image.width.toDouble(), image.height.toDouble());
+    final imageSize = Size(image.width.toDouble(), image.height.toDouble());
 
     final fittedSizes = applyBoxFit(BoxFit.contain, imageSize, containerSize);
     final destinationRect = Alignment.center.inscribe(
-        fittedSizes.destination, Rect.fromLTWH(0, 0, containerSize.width, containerSize.height));
+      fittedSizes.destination,
+      Rect.fromLTWH(0, 0, containerSize.width, containerSize.height),
+    );
 
     // Clip the selection rect to the bounds of the displayed image.
-    final clippedSelectionRect = logicalSelectionRect.intersect(destinationRect);
+    final clippedSelectionRect = logicalSelectionRect.intersect(
+      destinationRect,
+    );
     if (clippedSelectionRect.width <= 0 || clippedSelectionRect.height <= 0) {
       return null;
     }
 
     // Transform coordinates from container-space to image-pixel-space.
     // 1. Translate to be relative to the image's top-left corner on screen.
-    final relativeSelectionRect =
-        clippedSelectionRect.translate(-destinationRect.left, -destinationRect.top);
+    final relativeSelectionRect = clippedSelectionRect.translate(
+      -destinationRect.left,
+      -destinationRect.top,
+    );
 
     // 2. Scale to pixel dimensions.
     final scaleX = image.width / destinationRect.width;
@@ -143,11 +243,13 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
     );
 
     final croppedUiImage = await recorder.endRecording().toImage(
-          pixelRect.width.toInt(),
-          pixelRect.height.toInt(),
-        );
+      pixelRect.width.toInt(),
+      pixelRect.height.toInt(),
+    );
 
-    final byteData = await croppedUiImage.toByteData(format: ui.ImageByteFormat.png);
+    final byteData = await croppedUiImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
     croppedUiImage.dispose();
 
     return byteData?.buffer.asUint8List();
@@ -183,22 +285,23 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
             : Stack(
                 alignment: Alignment.center,
                 children: [
-                  Image.memory(
-                    widget.imageBytes,
-                    fit: BoxFit.contain,
-                  ),
+                  Image.memory(widget.imageBytes, fit: BoxFit.contain),
                   Positioned.fill(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onScaleStart: (details) {
-                        final box = _imageContainerKey.currentContext
-                            ?.findRenderObject() as RenderBox?;
+                        final box =
+                            _imageContainerKey.currentContext
+                                    ?.findRenderObject()
+                                as RenderBox?;
                         if (box == null) return;
                         final local = box.globalToLocal(details.focalPoint);
 
                         if (_selectionRectLogical != null) {
-                          _activeHandle =
-                              _getHandleAt(local, _selectionRectLogical!);
+                          _activeHandle = _getHandleAt(
+                            local,
+                            _selectionRectLogical!,
+                          );
                         } else {
                           _activeHandle = _ResizeHandle.none;
                         }
@@ -234,8 +337,10 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
                         }
                       },
                       onScaleUpdate: (details) {
-                        final box = _imageContainerKey.currentContext
-                            ?.findRenderObject() as RenderBox?;
+                        final box =
+                            _imageContainerKey.currentContext
+                                    ?.findRenderObject()
+                                as RenderBox?;
                         if (box == null) return;
                         final local = box.globalToLocal(details.focalPoint);
 
@@ -244,15 +349,19 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
                               _baseFocalPoint != null) {
                             final delta = local - _baseFocalPoint!;
                             setState(() {
-                              _selectionRectLogical =
-                                  _baseRectForResize!.shift(delta);
+                              _selectionRectLogical = _shiftInsideImage(
+                                _baseRectForResize!,
+                                delta,
+                              );
                             });
                           }
                         } else {
                           if (_dragStartLogical != null) {
                             setState(() {
-                              _selectionRectLogical =
-                                  Rect.fromPoints(_dragStartLogical!, local);
+                              _selectionRectLogical = _squareFromAnchor(
+                                _dragStartLogical!,
+                                local,
+                              );
                             });
                           }
                         }
@@ -268,8 +377,9 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
                               painter: _SelectionOverlayPainter(
                                 rect: _selectionRectLogical!,
                                 overlayColor: Colors.black.withOpacity(0.5),
-                                borderColor:
-                                    Theme.of(context).colorScheme.primary,
+                                borderColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
                               ),
                               size: Size.infinite,
                             )
@@ -322,8 +432,12 @@ class _SelectionOverlayPainter extends CustomPainter {
       ..strokeWidth = 2.0;
 
     const double radius = 6.0;
-    for (final offset
-        in [rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight]) {
+    for (final offset in [
+      rect.topLeft,
+      rect.topRight,
+      rect.bottomLeft,
+      rect.bottomRight,
+    ]) {
       canvas.drawCircle(offset, radius, paintHandle);
       canvas.drawCircle(offset, radius, paintBorder);
     }
@@ -336,4 +450,3 @@ class _SelectionOverlayPainter extends CustomPainter {
         oldDelegate.borderColor != borderColor;
   }
 }
-

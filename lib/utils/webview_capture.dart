@@ -41,11 +41,83 @@ class _WebViewCaptureState extends State<WebViewCapture> {
   Rect? _baseRectForResize;
   Offset? _baseFocalPoint;
 
+  Rect? _webViewBounds() {
+    final box = _webViewKey.currentContext?.findRenderObject() as RenderBox?;
+    return box != null && box.hasSize ? Offset.zero & box.size : null;
+  }
+
+  Rect _squareFromAnchor(Offset anchor, Offset pointer) {
+    final bounds = _webViewBounds();
+    if (bounds == null) return Rect.fromPoints(anchor, pointer);
+
+    final safeAnchor = Offset(
+      anchor.dx.clamp(bounds.left, bounds.right).toDouble(),
+      anchor.dy.clamp(bounds.top, bounds.bottom).toDouble(),
+    );
+    var growRight = pointer.dx >= safeAnchor.dx;
+    var growDown = pointer.dy >= safeAnchor.dy;
+    if (growRight && safeAnchor.dx == bounds.right) growRight = false;
+    if (!growRight && safeAnchor.dx == bounds.left) growRight = true;
+    if (growDown && safeAnchor.dy == bounds.bottom) growDown = false;
+    if (!growDown && safeAnchor.dy == bounds.top) growDown = true;
+
+    final horizontalDistance = (pointer.dx - safeAnchor.dx).abs();
+    final verticalDistance = (pointer.dy - safeAnchor.dy).abs();
+    final requestedSide = horizontalDistance > verticalDistance
+        ? horizontalDistance
+        : verticalDistance;
+    final horizontalLimit = growRight
+        ? bounds.right - safeAnchor.dx
+        : safeAnchor.dx - bounds.left;
+    final verticalLimit = growDown
+        ? bounds.bottom - safeAnchor.dy
+        : safeAnchor.dy - bounds.top;
+    final side = requestedSide
+        .clamp(
+          1.0,
+          horizontalLimit < verticalLimit ? horizontalLimit : verticalLimit,
+        )
+        .toDouble();
+
+    return Rect.fromLTWH(
+      growRight ? safeAnchor.dx : safeAnchor.dx - side,
+      growDown ? safeAnchor.dy : safeAnchor.dy - side,
+      side,
+      side,
+    );
+  }
+
+  Rect _shiftInsideWebView(Rect rect, Offset delta) {
+    final bounds = _webViewBounds();
+    if (bounds == null) return rect.shift(delta);
+
+    final shifted = rect.shift(delta);
+    final dx = shifted.left < bounds.left
+        ? bounds.left - shifted.left
+        : shifted.right > bounds.right
+        ? bounds.right - shifted.right
+        : 0.0;
+    final dy = shifted.top < bounds.top
+        ? bounds.top - shifted.top
+        : shifted.bottom > bounds.bottom
+        ? bounds.bottom - shifted.bottom
+        : 0.0;
+    return shifted.shift(Offset(dx, dy));
+  }
+
   _ResizeHandle _getHandleAt(Offset local, Rect rect) {
-    if ((local - rect.topLeft).distance <= _handleHitTestSize) return _ResizeHandle.topLeft;
-    if ((local - rect.topRight).distance <= _handleHitTestSize) return _ResizeHandle.topRight;
-    if ((local - rect.bottomLeft).distance <= _handleHitTestSize) return _ResizeHandle.bottomLeft;
-    if ((local - rect.bottomRight).distance <= _handleHitTestSize) return _ResizeHandle.bottomRight;
+    if ((local - rect.topLeft).distance <= _handleHitTestSize) {
+      return _ResizeHandle.topLeft;
+    }
+    if ((local - rect.topRight).distance <= _handleHitTestSize) {
+      return _ResizeHandle.topRight;
+    }
+    if ((local - rect.bottomLeft).distance <= _handleHitTestSize) {
+      return _ResizeHandle.bottomLeft;
+    }
+    if ((local - rect.bottomRight).distance <= _handleHitTestSize) {
+      return _ResizeHandle.bottomRight;
+    }
     if (rect.contains(local)) return _ResizeHandle.center;
     return _ResizeHandle.none;
   }
@@ -90,16 +162,18 @@ class _WebViewCaptureState extends State<WebViewCapture> {
               icon: const Icon(Icons.crop_free),
               tooltip: 'Seleccionar región',
               onPressed: () {
-                final renderBox = _webViewKey.currentContext
-                    ?.findRenderObject() as RenderBox?;
+                final renderBox =
+                    _webViewKey.currentContext?.findRenderObject()
+                        as RenderBox?;
                 if (renderBox != null && renderBox.hasSize) {
                   final size = renderBox.size;
-                  final width = size.width * 0.5;
-                  final height = size.height * 0.2;
+                  final side = (size.shortestSide * 0.5)
+                      .clamp(1.0, double.infinity)
+                      .toDouble();
                   final rect = Rect.fromCenter(
                     center: size.center(Offset.zero),
-                    width: width,
-                    height: height,
+                    width: side,
+                    height: side,
                   );
                   setState(() {
                     _selectionMode = true;
@@ -128,11 +202,7 @@ class _WebViewCaptureState extends State<WebViewCapture> {
           Container(
             key: _webViewKey,
             child: InAppWebView(
-              initialUrlRequest: URLRequest(
-                url: WebUri(
-                  widget.initialUrl,
-                ),
-              ),
+              initialUrlRequest: URLRequest(url: WebUri(widget.initialUrl)),
               // Configuración inicial para permitir zoom y scroll fluido
               initialSettings: InAppWebViewSettings(
                 isInspectable: kDebugMode,
@@ -170,7 +240,8 @@ class _WebViewCaptureState extends State<WebViewCapture> {
                 behavior: HitTestBehavior.opaque,
                 onScaleStart: (details) {
                   final box =
-                      _webViewKey.currentContext?.findRenderObject() as RenderBox?;
+                      _webViewKey.currentContext?.findRenderObject()
+                          as RenderBox?;
                   if (box == null) return;
                   final local = box.globalToLocal(details.focalPoint);
 
@@ -211,7 +282,8 @@ class _WebViewCaptureState extends State<WebViewCapture> {
                 },
                 onScaleUpdate: (details) {
                   final box =
-                      _webViewKey.currentContext?.findRenderObject() as RenderBox?;
+                      _webViewKey.currentContext?.findRenderObject()
+                          as RenderBox?;
                   if (box == null) return;
                   final local = box.globalToLocal(details.focalPoint);
 
@@ -220,15 +292,20 @@ class _WebViewCaptureState extends State<WebViewCapture> {
                     if (_baseRectForResize != null && _baseFocalPoint != null) {
                       final delta = local - _baseFocalPoint!;
                       setState(() {
-                        _selectionRectLogical = _baseRectForResize!.shift(delta);
+                        _selectionRectLogical = _shiftInsideWebView(
+                          _baseRectForResize!,
+                          delta,
+                        );
                       });
                     }
                   } else {
                     // Redimensionar o Crear (ambos usan _dragStartLogical como ancla)
                     if (_dragStartLogical != null) {
                       setState(() {
-                        _selectionRectLogical =
-                            Rect.fromPoints(_dragStartLogical!, local);
+                        _selectionRectLogical = _squareFromAnchor(
+                          _dragStartLogical!,
+                          local,
+                        );
                       });
                     }
                   }
@@ -294,14 +371,16 @@ class _WebViewCaptureState extends State<WebViewCapture> {
     final double py = (logicalRect.top * scaleY)
         .clamp(0, image.height.toDouble())
         .toDouble();
-    final double pwidth = (logicalRect.width * scaleX)
-        .clamp(0, image.width - px)
-        .toDouble();
-    final double pheight = (logicalRect.height * scaleY)
-        .clamp(0, image.height - py)
-        .toDouble();
+    final requestedWidth = logicalRect.width * scaleX;
+    final requestedHeight = logicalRect.height * scaleY;
+    final side = [
+      requestedWidth,
+      requestedHeight,
+      image.width - px,
+      image.height - py,
+    ].reduce((first, second) => first < second ? first : second).toDouble();
 
-    final pixelRect = Rect.fromLTWH(px, py, pwidth, pheight);
+    final pixelRect = Rect.fromLTWH(px, py, side, side);
 
     // 4) Recortamos usando un PictureRecorder
     final recorder = ui.PictureRecorder();
@@ -397,9 +476,9 @@ class _WebViewCaptureState extends State<WebViewCapture> {
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop(); // Cerrar carga
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir la imagen: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al subir la imagen: $e')));
       }
     }
   }
@@ -415,7 +494,6 @@ class _WebViewCaptureState extends State<WebViewCapture> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                
                 const SizedBox(height: 10),
                 // Mostrar la imagen desde la memoria
                 Image.memory(imageBytes),
@@ -479,7 +557,12 @@ class _SelectionOverlayPainter extends CustomPainter {
       ..strokeWidth = 2.0;
 
     const double radius = 6.0;
-    for (final offset in [rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight]) {
+    for (final offset in [
+      rect.topLeft,
+      rect.topRight,
+      rect.bottomLeft,
+      rect.bottomRight,
+    ]) {
       canvas.drawCircle(offset, radius, paintHandle);
       canvas.drawCircle(offset, radius, paintBorder);
     }
