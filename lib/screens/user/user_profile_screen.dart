@@ -51,13 +51,18 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (user != null) {
         try {
           await user.updateDisplayName(_displayNameController.text.trim());
-          await UserDao().updateCurrentUserName(_displayNameController.text.trim());
+          await UserDao().updateCurrentUserName(
+            _displayNameController.text.trim(),
+          );
           // await user.updateEmail(_displayEmailController.text.trim());
           await user.updatePhotoURL(_photoUrlController.text.trim());
 
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
-            'photoUrl': _photoUrlController.text.trim(),
-          }, SetOptions(merge: true));
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
+                'photoUrl': _photoUrlController.text.trim(),
+              }, SetOptions(merge: true));
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -68,7 +73,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         } on FirebaseAuthException catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error al actualizar el perfil: ${e.message}')),
+              SnackBar(
+                content: Text('Error al actualizar el perfil: ${e.message}'),
+              ),
             );
           }
         } finally {
@@ -95,9 +102,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
       if (!mounted) return;
 
-      final Uint8List? croppedBytes = await Navigator.of(context).push<Uint8List>(
-        MaterialPageRoute(builder: (_) => SimpleImageCropper(imageBytes: imageBytes)),
-      );
+      final Uint8List? croppedBytes = await Navigator.of(context)
+          .push<Uint8List>(
+            MaterialPageRoute(
+              builder: (_) => SimpleImageCropper(
+                imageBytes: imageBytes,
+                cropShape: ImageCropShape.circle,
+              ),
+            ),
+          );
 
       if (croppedBytes != null) {
         _uploadImage(croppedBytes);
@@ -154,9 +167,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir imagen: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al subir imagen: $e')));
       }
     } finally {
       setState(() {
@@ -201,9 +214,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Editar Perfil'),
-      ),
+      appBar: AppBar(title: const Text('Editar Perfil')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -232,7 +243,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         radius: 18,
                         child: IconButton(
                           padding: EdgeInsets.zero,
-                          icon: const Icon(Icons.camera_alt, size: 20, color: Colors.blueGrey),
+                          icon: const Icon(
+                            Icons.camera_alt,
+                            size: 20,
+                            color: Colors.blueGrey,
+                          ),
                           onPressed: _showImageSourceActionSheet,
                         ),
                       ),
@@ -299,9 +314,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     ),
                   ),
                   child: _isLoading
-                      ? const CircularProgressIndicator(
-                          color: Colors.white,
-                        )
+                      ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('Guardar Cambios'),
                 ),
               ),

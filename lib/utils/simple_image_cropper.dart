@@ -6,11 +6,18 @@ import 'package:flutter/material.dart';
 // Re-using the handle enum and painter from webview_capture.dart for consistency.
 enum _ResizeHandle { topLeft, topRight, bottomLeft, bottomRight, center, none }
 
+enum ImageCropShape { square, circle }
+
 /// A simple widget to crop an image using a draggable and resizable rectangle.
 class SimpleImageCropper extends StatefulWidget {
   final Uint8List imageBytes;
+  final ImageCropShape cropShape;
 
-  const SimpleImageCropper({super.key, required this.imageBytes});
+  const SimpleImageCropper({
+    super.key,
+    required this.imageBytes,
+    this.cropShape = ImageCropShape.square,
+  });
 
   @override
   State<SimpleImageCropper> createState() => _SimpleImageCropperState();
@@ -235,6 +242,12 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
 
+    if (widget.cropShape == ImageCropShape.circle) {
+      canvas.clipPath(
+        Path()..addOval(Rect.fromLTWH(0, 0, pixelRect.width, pixelRect.height)),
+      );
+    }
+
     canvas.drawImageRect(
       image,
       pixelRect,
@@ -259,7 +272,11 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Recortar Imagen"),
+        title: Text(
+          widget.cropShape == ImageCropShape.circle
+              ? 'Recortar avatar'
+              : 'Recortar imagen',
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
@@ -376,6 +393,7 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
                           ? CustomPaint(
                               painter: _SelectionOverlayPainter(
                                 rect: _selectionRectLogical!,
+                                cropShape: widget.cropShape,
                                 overlayColor: Colors.black.withOpacity(0.5),
                                 borderColor: Theme.of(
                                   context,
@@ -396,11 +414,13 @@ class _SimpleImageCropperState extends State<SimpleImageCropper> {
 /// A custom painter to draw the cropping overlay.
 class _SelectionOverlayPainter extends CustomPainter {
   final Rect rect;
+  final ImageCropShape cropShape;
   final Color overlayColor;
   final Color borderColor;
 
   _SelectionOverlayPainter({
     required this.rect,
+    required this.cropShape,
     required this.overlayColor,
     required this.borderColor,
   });
@@ -409,18 +429,24 @@ class _SelectionOverlayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final path = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..addRect(rect)
       ..fillType = PathFillType.evenOdd;
+    if (cropShape == ImageCropShape.circle) {
+      path.addOval(rect);
+    } else {
+      path.addRect(rect);
+    }
 
     canvas.drawPath(path, Paint()..color = overlayColor);
 
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..color = borderColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0,
-    );
+    final borderPaint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    if (cropShape == ImageCropShape.circle) {
+      canvas.drawOval(rect, borderPaint);
+    } else {
+      canvas.drawRect(rect, borderPaint);
+    }
 
     // Draw resize handles at the corners.
     final paintHandle = Paint()
@@ -446,6 +472,7 @@ class _SelectionOverlayPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _SelectionOverlayPainter oldDelegate) {
     return oldDelegate.rect != rect ||
+        oldDelegate.cropShape != cropShape ||
         oldDelegate.overlayColor != overlayColor ||
         oldDelegate.borderColor != borderColor;
   }

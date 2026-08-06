@@ -66,7 +66,9 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
         _isLoading = false;
       });
     } else {
-      var wishItem = await WishlistDao().getGlobalWish(wishItemId: widget.wishItemId);
+      var wishItem = await WishlistDao().getGlobalWish(
+        wishItemId: widget.wishItemId,
+      );
       setState(() {
         _wishItem = wishItem;
         _isLoading = false;
@@ -158,26 +160,27 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
         }
       }
 
-      await WishlistDao().updateItem(
-        _wishList!.id!,
-        _wishItem!.id,
-        {'imageUrl': imageUrl},
-      );
+      await WishlistDao().updateItem(_wishList!.id!, _wishItem!.id, {
+        'imageUrl': imageUrl,
+      });
       _loadListAndWish(); // Recargar para mostrar la nueva imagen
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al actualizar imagen: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error al actualizar imagen: $e')));
     }
   }
 
   Future<void> _pickImageAndUpload(ImageSource source) async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image =
-        await picker.pickImage(source: source, imageQuality: 80, maxWidth: 1024);
+    final XFile? image = await picker.pickImage(
+      source: source,
+      imageQuality: 80,
+      maxWidth: 1024,
+    );
 
     if (image == null) return;
 
@@ -213,9 +216,9 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
       downloadUrl = await imageRef.getDownloadURL();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al subir la imagen: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error al subir la imagen: $e')));
       }
     }
 
@@ -325,112 +328,122 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                             _wishItem!.imageUrl!.startsWith('http'))
                           Hero(
                             tag: 'wish_image_${_wishItem!.id}',
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
-                                _wishItem!.imageUrl!,
-                                width: double.infinity,
-                                height: 220,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Container(
-                                  width: double.infinity,
-                                  height: 220,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.image,
-                                    size: 80,
-                                    color: Colors.grey,
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  color: Colors.grey.shade100,
+                                  child: Image.network(
+                                    _wishItem!.imageUrl!,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.contain,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              color: Colors.grey.shade200,
+                                              child: const Icon(
+                                                Icons.image,
+                                                size: 80,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
                                   ),
                                 ),
                               ),
                             ),
                           )
                         else
-                          Container(
-                            width: double.infinity,
-                            height: 220,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.image,
-                              size: 80,
-                              color: Colors.grey,
+                          AspectRatio(
+                            aspectRatio: 1,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade200,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.image,
+                                size: 80,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
 
                         // Botones sobre la imagen
-                        if (_wishList?.ownerId == UserAuth.instance.getCurrentUser().uid)
+                        if (_wishList?.ownerId ==
+                            UserAuth.instance.getCurrentUser().uid)
                           Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                  // Menú para cambiar imagen
-                                  Material(
-                                    color: Colors.white.withOpacity(0.85),
-                                    shape: const CircleBorder(),
-                                    elevation: 2,
-                                    child: PopupMenuButton<String>(
-                                      icon: Icon(Icons.edit,
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary),
-                                      tooltip: 'Cambiar imagen',
-                                      onSelected: (value) async {
-                                        if (value == 'webview') {
-                                          if (_wishItem?.productUrl != null &&
-                                              _wishItem!
-                                                  .productUrl!.isNotEmpty) {
-                                            final result = await Navigator.of(
-                                                    context)
-                                                .push(
-                                              MaterialPageRoute(
-                                                builder: (_) => WebViewCapture(
-                                                    initialUrl: _wishItem!
-                                                        .productUrl!),
-                                              ),
-                                            );
-                                            if (result != null &&
-                                                result is String) {
-                                              _updateWishImage(result);
-                                            }
-                                          }
-                                        } else if (value == 'capture') {
-                                          _showImageSourceOptions();
-                                        }
-                                      },
-                                      itemBuilder: (BuildContext context) =>
-                                          <PopupMenuEntry<String>>[
-                                        PopupMenuItem<String>(
-                                          value: 'webview',
-                                          enabled: _wishItem?.productUrl != null && _wishItem!.productUrl!.isNotEmpty,
-                                          child: const Row(
-                                            children: [
-                                              Icon(Icons.link),
-                                              SizedBox(width: 12),
-                                              Text('Desde enlace'),
-                                            ],
-                                          ),
-                                        ),
-                                        const PopupMenuItem<String>(
-                                          value: 'capture',
-                                          child: Row(
-                                            children: [
-                                              Icon(Icons.add_a_photo),
-                                              SizedBox(width: 12),
-                                              Text('Capturar imagen'),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
+                                // Menú para cambiar imagen
+                                Material(
+                                  color: Colors.white.withOpacity(0.85),
+                                  shape: const CircleBorder(),
+                                  elevation: 2,
+                                  child: PopupMenuButton<String>(
+                                    icon: Icon(
+                                      Icons.edit,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                     ),
+                                    tooltip: 'Cambiar imagen',
+                                    onSelected: (value) async {
+                                      if (value == 'webview') {
+                                        if (_wishItem?.productUrl != null &&
+                                            _wishItem!.productUrl!.isNotEmpty) {
+                                          final result =
+                                              await Navigator.of(context).push(
+                                                MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      WebViewCapture(
+                                                        initialUrl: _wishItem!
+                                                            .productUrl!,
+                                                      ),
+                                                ),
+                                              );
+                                          if (result != null &&
+                                              result is String) {
+                                            _updateWishImage(result);
+                                          }
+                                        }
+                                      } else if (value == 'capture') {
+                                        _showImageSourceOptions();
+                                      }
+                                    },
+                                    itemBuilder: (BuildContext context) =>
+                                        <PopupMenuEntry<String>>[
+                                          PopupMenuItem<String>(
+                                            value: 'webview',
+                                            enabled:
+                                                _wishItem?.productUrl != null &&
+                                                _wishItem!
+                                                    .productUrl!
+                                                    .isNotEmpty,
+                                            child: const Row(
+                                              children: [
+                                                Icon(Icons.link),
+                                                SizedBox(width: 12),
+                                                Text('Desde enlace'),
+                                              ],
+                                            ),
+                                          ),
+                                          const PopupMenuItem<String>(
+                                            value: 'capture',
+                                            child: Row(
+                                              children: [
+                                                Icon(Icons.add_a_photo),
+                                                SizedBox(width: 12),
+                                                Text('Capturar imagen'),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                   ),
+                                ),
                               ],
                             ),
                           ),
@@ -510,7 +523,8 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: _wishItem!.storeOptions!.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 12),
                           itemBuilder: (context, index) {
                             final option = _wishItem!.storeOptions![index];
                             return SizedBox(
@@ -523,7 +537,8 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(16),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         option.name,
@@ -542,9 +557,9 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
                                           ),
                                         ),
                                       const SizedBox(height: 12),
@@ -553,8 +568,9 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                                           width: double.infinity,
                                           child: ElevatedButton.icon(
                                             onPressed: () async {
-                                              final uri =
-                                                  Uri.parse(option.productUrl);
+                                              final uri = Uri.parse(
+                                                option.productUrl,
+                                              );
                                               if (await canLaunchUrl(uri)) {
                                                 await launchUrl(uri);
                                               }
@@ -564,8 +580,8 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                                             style: ElevatedButton.styleFrom(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                vertical: 10,
-                                              ),
+                                                    vertical: 10,
+                                                  ),
                                             ),
                                           ),
                                         ),
@@ -613,13 +629,20 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                       ),
                       const SizedBox(height: 16),
                       StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                        stream: WishlistDao().getCommentsStream(widget.wishItemId),
+                        stream: WishlistDao().getCommentsStream(
+                          widget.wishItemId,
+                        ),
                         builder: (context, snapshot) {
                           if (snapshot.hasError) {
-                            return const Text('No se pudieron cargar los comentarios');
+                            return const Text(
+                              'No se pudieron cargar los comentarios',
+                            );
                           }
-                          if (snapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(child: CircularProgressIndicator());
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
                           }
 
                           final docs = snapshot.data?.docs ?? [];
@@ -631,26 +654,37 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             itemCount: docs.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
                             itemBuilder: (context, index) {
-                              final comment = Comment.fromFirestore(docs[index]);
+                              final comment = Comment.fromFirestore(
+                                docs[index],
+                              );
                               return Card(
                                 child: Padding(
                                   padding: const EdgeInsets.all(12),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Row(
                                         children: [
                                           Expanded(
                                             child: Text(
                                               comment.userName,
-                                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                           Text(
-                                            formatCommentDate(comment.createdAt),
-                                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                            formatCommentDate(
+                                              comment.createdAt,
+                                            ),
+                                            style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ],
                                       ),
