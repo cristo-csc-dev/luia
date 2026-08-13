@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:luia/auth/user_auth.dart';
 import 'package:luia/models/wish_item.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:luia/models/wish_list.dart';
 import 'package:luia/dao/wish_list_dao.dart';
 import 'package:luia/screens/wish/i_have_it_screen.dart';
@@ -155,57 +158,51 @@ class _WishCardState extends State<WishCard> {
                       wishItem.imageUrl!.startsWith('http'))
                     Hero(
                       tag: 'wish_image_${wishItem.id}',
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Stack(
-                          children: [
-                            Image.network(
-                              wishItem.imageUrl!,
-                              width: 80,
-                              height: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                width: 80,
-                                height: 80,
-                                color: Colors.grey.shade200,
-                                child: const Center(
-                                  child: Icon(Icons.image,
-                                      size: 40, color: Colors.grey),
+                      child: SizedBox(
+                        width: 80,
+                        child: AspectRatio(
+                          aspectRatio: 1,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              color: Colors.grey.shade100,
+                              child: Image.network(
+                                wishItem.imageUrl!,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                  color: Colors.grey.shade200,
+                                  child: const Center(
+                                    child: Icon(Icons.image,
+                                        size: 40, color: Colors.grey),
+                                  ),
                                 ),
                               ),
                             ),
-                            Positioned(
-                              right: 6,
-                              bottom: 6,
-                              child: Material(
-                                color: Colors.white.withOpacity(0.95),
-                                shape: const CircleBorder(),
-                                elevation: 2,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     )
                   else
-                    Container(
+                    SizedBox(
                       width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Stack(
-                        children: [
-                          const Center(
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
                             child: Icon(
                               Icons.image,
                               size: 40,
                               color: Colors.grey,
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   const SizedBox(width: 12),
@@ -285,6 +282,42 @@ class _WishCardState extends State<WishCard> {
                   if(showOptions)...[
                     PopupMenuButton<String>(
                       onSelected: (value) async {
+                        if (value == 'share') {
+                          final parts = <String>[];
+                          parts.add(wishItem.name);
+                          // Deep link to the app: use list path when available
+                          final baseLink = (wishList != null && (wishList.id?.isNotEmpty ?? false))
+                              ? 'https://www.luia.app/list/${wishList.id}/wish/${wishItem.id}'
+                              : 'https://www.luia.app/wish/${wishItem.id}';
+                          // Add UTM params including content and term
+                          final utmParams = {
+                            'utm_source': 'share',
+                            'utm_medium': 'app',
+                            'utm_campaign': 'share_button',
+                            'utm_content': (wishList != null) ? 'list_item' : 'global_item',
+                            'utm_term': wishItem.id,
+                          };
+                          final deepLink = Uri.parse(baseLink).replace(queryParameters: utmParams).toString();
+                          parts.add(deepLink);
+                          // Include product URL and notes as additional context
+                          if (wishItem.productUrl != null && wishItem.productUrl!.isNotEmpty) parts.add(wishItem.productUrl!);
+                          if (wishItem.notes != null && wishItem.notes!.isNotEmpty) parts.add(wishItem.notes!);
+                          final shareText = parts.join('\n');
+
+                          // If there's a remote image, try to download and share it as EXTRA_STREAM
+                          try {
+                            if (wishItem.imageUrl != null && wishItem.imageUrl!.isNotEmpty && wishItem.imageUrl!.startsWith('http')) {
+                              final file = await DefaultCacheManager().getSingleFile(wishItem.imageUrl!);
+                              final xfile = XFile(file.path);
+                              await Share.shareXFiles([xfile], text: shareText, subject: wishItem.name);
+                              return;
+                            }
+                          } catch (e) {
+                            // ignore and fallback to text share
+                          }
+
+                          await Share.share(shareText, subject: wishItem.name);
+                        }
                         if (value == 'edit') widget.onEdit?.call();
                         if (value == 'delete') widget.onDelete?.call();
                         if (value == 'ihaveit') {
@@ -311,6 +344,10 @@ class _WishCardState extends State<WishCard> {
                       },
                       itemBuilder: (BuildContext context) =>
                           <PopupMenuEntry<String>>[
+                            const PopupMenuItem<String>(
+                              value: 'share',
+                              child: Row(children: [Icon(Icons.share), SizedBox(width:12), Text('Compartir')]),
+                            ),
                             const PopupMenuItem<String>(
                               value: 'edit',
                               child: Text('Editar'),

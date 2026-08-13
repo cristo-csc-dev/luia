@@ -66,6 +66,7 @@ class CompactWishCard extends StatelessWidget {
         'suggestedStore': wishItem.suggestedStore,
         'notes': wishItem.notes,
         'imageUrl': wishItem.imageUrl,
+        'tags': wishItem.tags,
         'priority': wishItem.priority,
         'isBought': false,
         'isTaken': false,

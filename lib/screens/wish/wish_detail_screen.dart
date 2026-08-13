@@ -17,6 +17,8 @@ import 'package:luia/utils/simple_image_cropper.dart';
 
 import 'package:luia/utils/webview_capture.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 class WishDetailScreen extends StatefulWidget {
   final String wishItemId;
@@ -275,7 +277,6 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
     if (text.isEmpty) return;
 
     final user = UserAuth.instance.getCurrentUser();
-    if (user == null) return;
 
     final userName = user.displayName ?? user.email ?? 'Usuario';
 
@@ -289,12 +290,59 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
     _commentController.clear();
   }
 
+  Future<void> _shareWish() async {
+    if (_wishItem == null) return;
+    final parts = <String>[];
+    parts.add(_wishItem!.name);
+    // Deep link to the app: if this wish belongs to a list, include the list path
+    final baseLink = (_wishList != null && (_wishList!.id?.isNotEmpty ?? false))
+      ? 'https://www.luia.app/list/${_wishList!.id}/wish/${_wishItem!.id}'
+      : 'https://www.luia.app/wish/${_wishItem!.id}';
+    final utmParams = {
+      'utm_source': 'share',
+      'utm_medium': 'app',
+      'utm_campaign': 'share_button',
+      'utm_content': (_wishList != null) ? 'list_detail' : 'global_detail',
+      'utm_term': _wishItem!.id,
+    };
+    final deepLink = Uri.parse(baseLink).replace(queryParameters: utmParams).toString();
+    parts.add(deepLink);
+    if (_wishItem!.productUrl != null && _wishItem!.productUrl!.isNotEmpty) {
+      parts.add(_wishItem!.productUrl!);
+    }
+    if (_wishItem!.notes != null && _wishItem!.notes!.isNotEmpty) {
+      parts.add(_wishItem!.notes!);
+    }
+    if (_wishItem!.imageUrl != null && _wishItem!.imageUrl!.isNotEmpty) {
+      parts.add(_wishItem!.imageUrl!);
+    }
+    final shareText = parts.join('\n');
+    // If image URL present, try to download and share as EXTRA_STREAM
+    try {
+      if (_wishItem!.imageUrl != null && _wishItem!.imageUrl!.isNotEmpty && _wishItem!.imageUrl!.startsWith('http')) {
+        final file = await DefaultCacheManager().getSingleFile(_wishItem!.imageUrl!);
+        final xfile = XFile(file.path);
+        await Share.shareXFiles([xfile], text: shareText, subject: _wishItem!.name);
+        return;
+      }
+    } catch (e) {
+      // ignore and fallback
+    }
+
+    Share.share(shareText, subject: _wishItem!.name);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detalle del Deseo'),
+        title: const Text('Detalle'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: _shareWish,
+            tooltip: 'Compartir',
+          ),
           if (_wishList?.ownerId == UserAuth.instance.getCurrentUser().uid)
             IconButton(
               icon: const Icon(Icons.edit),

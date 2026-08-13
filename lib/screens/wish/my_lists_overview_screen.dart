@@ -5,6 +5,7 @@ import 'package:luia/auth/user_auth.dart';
 import 'package:luia/dao/wish_list_dao.dart';
 import 'package:luia/models/wish_list.dart';
 import 'package:luia/widgets/list_card.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:luia/screens/wish/add_wish_screen.dart';
 import 'package:luia/models/wish_item.dart';
 
@@ -60,9 +61,18 @@ class _MyListsOverviewScreenState extends State<MyListsOverviewScreen> {
                 onEdit: () async {
                   context.go('/home/wishlists/mine/${list.id}/editFromList');
                 },
-                onShare: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Compartir lista "${list.name}"')));
+                onShare: () async {
+                  final baseLink = 'https://www.luia.app/list/${list.id}';
+                  final utmParams = {
+                    'utm_source': 'share',
+                    'utm_medium': 'app',
+                    'utm_campaign': 'share_list',
+                    'utm_content': 'list_overview',
+                    'utm_term': list.id ?? '',
+                  };
+                  final deepLink = Uri.parse(baseLink).replace(queryParameters: utmParams).toString();
+                  final shareText = '${list.name}\n$deepLink\n${list.itemCount} deseos';
+                  await Share.share(shareText, subject: list.name);
                 },
                 onAdd: () async {
                   final newWish = await Navigator.push(

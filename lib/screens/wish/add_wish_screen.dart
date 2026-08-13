@@ -29,6 +29,7 @@ class _AddWishScreenState extends State<AddWishScreen> {
   late TextEditingController _priceController;
   late TextEditingController _storeController;
   late TextEditingController _notesController;
+  late TextEditingController _tagsController;
   late TextEditingController _newListController;
   late TextEditingController _newStoreNameController;
   late TextEditingController _newStoreUrlController;
@@ -89,6 +90,9 @@ class _AddWishScreenState extends State<AddWishScreen> {
       text: _wishItem?.suggestedStore ?? '',
     );
     _notesController = TextEditingController(text: _wishItem?.notes ?? '');
+    _tagsController = TextEditingController(
+      text: _wishItem?.tags.join(', ') ?? '',
+    );
     _newListController = TextEditingController();
     _newListController.addListener(_onNewListNameChanged);
     _selectedPriority = _wishItem?.priority ?? 3;
@@ -105,6 +109,7 @@ class _AddWishScreenState extends State<AddWishScreen> {
     _priceController.dispose();
     _storeController.dispose();
     _notesController.dispose();
+    _tagsController.dispose();
     _newListController.removeListener(_onNewListNameChanged);
     _newListController.dispose();
     _newStoreNameController.dispose();
@@ -133,7 +138,9 @@ class _AddWishScreenState extends State<AddWishScreen> {
 
     if (name.isNotEmpty) {
       setState(() {
-        _storeOptions.add(StoreOption(name: name, productUrl: url, price: price));
+        _storeOptions.add(
+          StoreOption(name: name, productUrl: url, price: price),
+        );
         _newStoreNameController.clear();
         _newStoreUrlController.clear();
         _newStorePriceController.clear();
@@ -189,6 +196,7 @@ class _AddWishScreenState extends State<AddWishScreen> {
       estimatedPrice: double.tryParse(_priceController.text),
       suggestedStore: _storeController.text,
       notes: _notesController.text,
+      tags: _parseTags(_tagsController.text),
       priority: _selectedPriority,
       imageUrl: _wishItem?.imageUrl,
       storeOptions: _storeOptions,
@@ -252,6 +260,15 @@ class _AddWishScreenState extends State<AddWishScreen> {
         ),
       );
     }
+  }
+
+  List<String> _parseTags(String value) {
+    final tagsByKey = <String, String>{};
+    for (final rawTag in value.split(',')) {
+      final tag = rawTag.trim();
+      if (tag.isNotEmpty) tagsByKey[tag.toLowerCase()] = tag;
+    }
+    return tagsByKey.values.toList();
   }
 
   @override
@@ -336,6 +353,17 @@ class _AddWishScreenState extends State<AddWishScreen> {
                           ),
                           maxLines: 3,
                         ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _tagsController,
+                          decoration: const InputDecoration(
+                            labelText: 'Etiquetas (Opcional)',
+                            hintText: 'Ej: tecnología, hogar, deporte',
+                            helperText: 'Separa las etiquetas con comas',
+                            border: OutlineInputBorder(),
+                          ),
+                          textInputAction: TextInputAction.done,
+                        ),
                         const SizedBox(height: 24),
                         const Divider(),
                         const SizedBox(height: 16),
@@ -355,7 +383,10 @@ class _AddWishScreenState extends State<AddWishScreen> {
                                 '${option.price.toStringAsFixed(2)}€\n${option.productUrl}',
                               ),
                               trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
                                 onPressed: () => _removeStoreOption(index),
                               ),
                             ),
@@ -392,7 +423,11 @@ class _AddWishScreenState extends State<AddWishScreen> {
                             ),
                             IconButton(
                               onPressed: _addStoreOption,
-                              icon: const Icon(Icons.add_circle, color: Colors.indigo, size: 32),
+                              icon: const Icon(
+                                Icons.add_circle,
+                                color: Colors.indigo,
+                                size: 32,
+                              ),
                             ),
                           ],
                         ),
@@ -538,11 +573,12 @@ class _AddWishScreenState extends State<AddWishScreen> {
                                               Theme.of(
                                                 context,
                                               ).appBarTheme.backgroundColor ??
-                                              Theme.of(context)
-                                                  .colorScheme
-                                                  .primary,
-                                          borderRadius:
-                                              BorderRadius.circular(6.0),
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                          borderRadius: BorderRadius.circular(
+                                            6.0,
+                                          ),
                                         ),
                                         child: Text(
                                           'Selecciona o crea una lista para guardar el deseo',

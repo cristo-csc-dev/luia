@@ -12,11 +12,7 @@ class StoreOption {
   });
 
   Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'productUrl': productUrl,
-      'price': price,
-    };
+    return {'name': name, 'productUrl': productUrl, 'price': price};
   }
 
   factory StoreOption.fromMap(Map<String, dynamic> map) {
@@ -36,6 +32,7 @@ class WishItem {
   String? suggestedStore;
   String? notes;
   String? imageUrl;
+  List<String> tags;
   int priority;
   bool isBought;
   String? boughtById;
@@ -59,6 +56,7 @@ class WishItem {
     this.suggestedStore,
     this.notes,
     this.imageUrl,
+    this.tags = const [],
     this.priority = 3,
     this.isBought = false,
     this.boughtById,
@@ -78,6 +76,7 @@ class WishItem {
       'suggestedStore': suggestedStore,
       'notes': notes,
       'imageUrl': imageUrl,
+      'tags': tags,
       'priority': priority,
       'isBought': isBought,
       'boughtById': boughtById,
@@ -97,6 +96,13 @@ class WishItem {
       suggestedStore: data['suggestedStore'],
       notes: data['notes'],
       imageUrl: data['imageUrl'],
+      tags:
+          (data['tags'] as List?)
+              ?.whereType<String>()
+              .map((tag) => tag.trim())
+              .where((tag) => tag.isNotEmpty)
+              .toList() ??
+          const [],
       priority: data['priority'] ?? 3,
       isBought: data['isBought'] ?? false,
       boughtById: data['boughtById'],

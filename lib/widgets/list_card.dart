@@ -85,6 +85,10 @@ class ListCard extends StatelessWidget {
                               child: Text('Editar'),
                             ),
                             const PopupMenuItem<String>(
+                              value: 'share',
+                              child: Row(children: [Icon(Icons.share), SizedBox(width:12), Text('Compartir')]),
+                            ),
+                            const PopupMenuItem<String>(
                               value: 'add',
                               child: Text('Añadir deseo'),
                             ),

@@ -25,6 +25,7 @@ interface ItemData {
   imageUrl?: string;
   name: string;
   productUrl?: string;
+  tags?: string[];
   linkToGlobalWishId?: string; // Campo para linkear a deseo global existente
   globalWishId?: string;
 }
@@ -59,6 +60,38 @@ interface ContactData {
   name?: string;
   email: string;
   createdAt: admin.firestore.FieldValue;
+}
+
+interface NormalizedTag {
+  id: string;
+  label: string;
+}
+
+/**
+ * Normaliza etiquetas para utilizarlas como IDs estables de Firestore.
+ * @param {string[] | undefined} tags Etiquetas introducidas por el usuario.
+ * @return {NormalizedTag[]} Etiquetas normalizadas y sin duplicados.
+ */
+function normalizeTags(tags?: string[]): NormalizedTag[] {
+  if (!Array.isArray(tags)) return [];
+
+  const tagsById = new Map<string, NormalizedTag>();
+  for (const value of tags) {
+    if (typeof value !== "string") continue;
+    const label = value.trim().replace(/\s+/g, " ");
+    if (!label) continue;
+
+    let id = label
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/\//g, "-")
+      .replace(/\s+/g, "-")
+      .slice(0, 200);
+    if (id === "." || id === "..") id = `tag-${id.length}`;
+    if (id) tagsById.set(id, {id, label});
+  }
+  return [...tagsById.values()];
 }
 
 // Escuchamos los cambios en el nivel más profundo: los ítems
@@ -101,6 +134,9 @@ export const syncItemsToGlobalList = functions
       const globalWishId = itemData.linkToGlobalWishId ??
         itemData.globalWishId ?? itemId;
       const globalRef = db.collection("all_wishes_global").doc(globalWishId);
+      const tags = normalizeTags(itemData.tags);
+      const previousTags = change.before.exists ?
+        normalizeTags((change.before.data() as ItemData).tags) : [];
       const previousGlobalWishId = change.before.exists?
         (change.before.data() as ItemData | undefined)?.globalWishId:
         undefined;
@@ -117,6 +153,7 @@ export const syncItemsToGlobalList = functions
             name: itemData.name,
             productUrl: itemData.productUrl,
             imageUrl: itemData.imageUrl,
+            tags: tags.map((tag) => tag.label),
             sharedCount: 1,
             commentCount: 0,
             flattenedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -130,6 +167,7 @@ export const syncItemsToGlobalList = functions
           name: itemData.name,
           productUrl: itemData.productUrl,
           imageUrl: itemData.imageUrl,
+          tags: tags.map((tag) => tag.label),
           originalWishlistId: admin.firestore.FieldValue.delete(),
           ownerId: admin.firestore.FieldValue.delete(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -142,6 +180,7 @@ export const syncItemsToGlobalList = functions
             name: itemData.name,
             productUrl: itemData.productUrl,
             imageUrl: itemData.imageUrl,
+            tags: tags.map((tag) => tag.label),
             originalWishlistId: admin.firestore.FieldValue.delete(),
             ownerId: admin.firestore.FieldValue.delete(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -151,6 +190,43 @@ export const syncItemsToGlobalList = functions
         logger.info(`Luia: Cambio de metadatos del mismo deseo global 
           detectado;  se omite el incremento de sharedCount.`);
       }
+
+      const tagBatch = db.batch();
+      const currentTagIds = new Set(tags.map((tag) => tag.id));
+      const removedTagIds: string[] = [];
+      for (const tag of tags) {
+        const tagRef = db.collection("tags").doc(tag.id);
+        const taggedWishRef = tagRef.collection("wishes").doc(globalWishId);
+        tagBatch.set(tagRef, {
+          name: tag.label,
+          normalizedName: tag.id,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+        tagBatch.set(taggedWishRef, {
+          globalWishId,
+          wishRef: globalRef,
+          name: itemData.name,
+          imageUrl: itemData.imageUrl,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, {merge: true});
+      }
+      for (const previousTag of previousTags) {
+        if (!currentTagIds.has(previousTag.id)) {
+          removedTagIds.push(previousTag.id);
+          tagBatch.delete(
+            db.collection("tags").doc(previousTag.id)
+              .collection("wishes").doc(globalWishId)
+          );
+        }
+      }
+      await tagBatch.commit();
+      await Promise.all(removedTagIds.map(async (tagId) => {
+        const tagRef = db.collection("tags").doc(tagId);
+        const remainingWishes = await tagRef
+          .collection("wishes").limit(1).get();
+        if (remainingWishes.empty) await tagRef.delete();
+      }));
+
       const originalItemRef = db.collection("users").doc(userId)
         .collection("wishlists").doc(wishlistId)
         .collection("items").doc(itemId);

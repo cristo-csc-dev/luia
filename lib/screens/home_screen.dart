@@ -13,7 +13,7 @@ import 'package:luia/intent/android_intent.dart';
 import 'package:luia/models/wish_item.dart';
 import 'package:luia/screens/notification/notification_list_screen.dart';
 import 'package:luia/screens/wish/add_wish_screen.dart';
-import 'package:luia/widgets/catalog_wish_card.dart';
+import 'package:luia/screens/wish/tag_wishes_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       drawer: _buildAppDrawer(),
-      body: StreamBuilder<QuerySnapshot>(
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('all_wishes_global')
             .snapshots(),
@@ -110,48 +110,50 @@ class _HomeScreenState extends State<HomeScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = [...?snapshot.data?.docs];
-          if (docs.isEmpty) {
-            return const Center(child: Text('No hay deseos globales.'));
+          final wishesByTag = <String, _TagGroup>{};
+          for (final wish in snapshot.data?.docs ?? []) {
+            final tags = (wish.data()['tags'] as List?)?.whereType<String>();
+            for (final rawTag in tags ?? const <String>[]) {
+              final tagName = rawTag.trim();
+              if (tagName.isEmpty) continue;
+              wishesByTag
+                  .putIfAbsent(
+                    tagName.toLowerCase(),
+                    () => _TagGroup(name: tagName),
+                  )
+                  .wishes
+                  .add(wish);
+            }
+          }
+          final groups = wishesByTag.values.toList()
+            ..sort(
+              (first, second) =>
+                  first.name.toLowerCase().compareTo(second.name.toLowerCase()),
+            );
+          for (final group in groups) {
+            group.wishes.sort((first, second) {
+              final firstHasImage = _hasUsableWishImage(first);
+              final secondHasImage = _hasUsableWishImage(second);
+              if (firstHasImage == secondHasImage) return 0;
+              return firstHasImage ? -1 : 1;
+            });
+          }
+          if (groups.isEmpty) {
+            return const Center(child: Text('No hay etiquetas disponibles.'));
           }
 
-          docs.sort((first, second) {
-            final firstHasImage = _hasUsableImage(first);
-            final secondHasImage = _hasUsableImage(second);
-            if (firstHasImage == secondHasImage) return 0;
-            return firstHasImage ? -1 : 1;
-          });
-
-          return GridView.builder(
+          return ListView.separated(
             padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              mainAxisExtent: 278,
-            ),
-            itemCount: docs.length,
+            itemCount: groups.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final doc = docs[index];
-              final wishItem = WishItem.fromFirestore(doc);
-              return CatalogWishCard(
-                key: ValueKey('${_auth.currentUser?.uid}:${wishItem.id}'),
-                wishItem: wishItem,
-              );
+              final group = groups[index];
+              return _TagPanel(tagName: group.name, wishes: group.wishes);
             },
           );
         },
       ),
     );
-  }
-
-  bool _hasUsableImage(QueryDocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    final imageUrl = data['imageUrl'] as String?;
-    final uri = imageUrl == null ? null : Uri.tryParse(imageUrl.trim());
-    return uri != null &&
-        (uri.scheme == 'http' || uri.scheme == 'https') &&
-        uri.host.isNotEmpty;
   }
 
   void _fetchNotificationsCount() {
@@ -276,5 +278,150 @@ class _HomeScreenState extends State<HomeScreen> {
     _notificationCountSubscription?.cancel();
     _userChangesSubscription?.cancel();
     super.dispose();
+  }
+}
+
+class _TagGroup {
+  final String name;
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> wishes = [];
+
+  _TagGroup({required this.name});
+}
+
+bool _hasUsableWishImage(QueryDocumentSnapshot<Map<String, dynamic>> wish) {
+  final imageUrl = wish.data()['imageUrl'] as String?;
+  final uri = imageUrl == null ? null : Uri.tryParse(imageUrl.trim());
+  return uri != null &&
+      (uri.scheme == 'http' || uri.scheme == 'https') &&
+      uri.host.isNotEmpty;
+}
+
+class _TagPanel extends StatelessWidget {
+  final String tagName;
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> wishes;
+
+  const _TagPanel({required this.tagName, required this.wishes});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      elevation: 2,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => TagWishesScreen(tagName: tagName)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '#$tagName',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 132,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: wishes.length > 10 ? 10 : wishes.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) =>
+                      _TagWishThumbnail(globalWish: wishes[index]),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TagWishThumbnail extends StatelessWidget {
+  final QueryDocumentSnapshot<Map<String, dynamic>> globalWish;
+
+  const _TagWishThumbnail({required this.globalWish});
+
+  @override
+  Widget build(BuildContext context) {
+    final data = globalWish.data();
+    final globalWishId = globalWish.id;
+    final imageUrl = data['imageUrl'] as String?;
+    return _buildThumbnail(
+      context,
+      globalWishId,
+      imageUrl,
+      (data['name'] as String?) ?? 'Deseo',
+    );
+  }
+
+  Widget _buildThumbnail(
+    BuildContext context,
+    String globalWishId,
+    String? imageUrl,
+    String name,
+  ) {
+    final uri = imageUrl == null ? null : Uri.tryParse(imageUrl.trim());
+    final hasImage =
+        uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty;
+
+    return SizedBox(
+      width: 108,
+      child: InkWell(
+        onTap: () => context.go('/home/global/$globalWishId/detail'),
+        borderRadius: BorderRadius.circular(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: hasImage
+                    ? Image.network(
+                        imageUrl!,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.image_not_supported_outlined,
+                          color: Colors.grey,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.photo_library_outlined,
+                        color: Colors.grey,
+                      ),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
