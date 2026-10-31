@@ -9,6 +9,7 @@ class DeepLinkService {
   final StreamController<Uri> _linkStreamController =
       StreamController<Uri>.broadcast();
   final AppLinks _appLinks = AppLinks();
+  Uri? _lastHandledUri;
 
   Stream<Uri> get linkStream => _linkStreamController.stream;
 
@@ -23,6 +24,7 @@ class DeepLinkService {
   Future<void> _initLinks() async {
     try {
       final Uri? initialUri = await _appLinks.getInitialLink();
+      debugPrint('DeepLinkService: initialUri=$initialUri');
       if (initialUri != null) {
         _linkStreamController.add(initialUri);
       }
@@ -32,6 +34,7 @@ class DeepLinkService {
 
     _appLinks.uriLinkStream.listen(
       (Uri uri) {
+        debugPrint('DeepLinkService: uriLinkStream event: $uri');
         _linkStreamController.add(uri);
       },
       onError: (Object err) {
@@ -41,12 +44,24 @@ class DeepLinkService {
   }
 
   void handleUri(Uri uri, BuildContext context) {
+    debugPrint('DeepLinkService.handleUri: received uri=$uri');
+
+    // Ignore repeated URIs to avoid navigating again when app resumes
+    if (_lastHandledUri != null && _lastHandledUri.toString() == uri.toString()) {
+      debugPrint('DeepLinkService: ignoring duplicate uri');
+      return;
+    }
+    _lastHandledUri = uri;
+
     final location = _locationFromUri(uri);
     if (location.isEmpty) {
+      debugPrint('DeepLinkService: resolved empty location for uri=$uri');
       return;
     }
 
-    GoRouter.of(context).go(location);
+    debugPrint('DeepLinkService: resolved location=$location');
+    final router = GoRouter.of(context);
+    router.go(location);
   }
 
   String _locationFromUri(Uri uri) {

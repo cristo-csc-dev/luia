@@ -5,6 +5,8 @@ import 'package:luia/dao/wish_list_dao.dart';
 import 'package:luia/models/wish_item.dart';
 import 'package:uuid/uuid.dart';
 import 'package:luia/models/wish_list.dart';
+import 'package:luia/screens/wish/add_wish_image_screen.dart';
+import 'package:luia/screens/wish/wish_detail_screen.dart';
 
 class AddWishScreen extends StatefulWidget {
   final String? wishItemId;
@@ -42,6 +44,8 @@ class _AddWishScreenState extends State<AddWishScreen> {
   WishItem? _wishItem;
   WishList? _wishList;
   bool _listSelectionError = false;
+  bool _isSaving = false;
+  String? _newImageUrl;
 
   @override
   void initState() {
@@ -163,6 +167,7 @@ class _AddWishScreenState extends State<AddWishScreen> {
   }
 
   Future<void> _saveWish() async {
+    if (_isSaving || _isLoading) return;
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -198,13 +203,25 @@ class _AddWishScreenState extends State<AddWishScreen> {
       notes: _notesController.text,
       tags: _parseTags(_tagsController.text),
       priority: _selectedPriority,
-      imageUrl: _wishItem?.imageUrl,
+      imageUrl: _newImageUrl ?? _wishItem?.imageUrl,
       storeOptions: _storeOptions,
     );
 
+    setState(() => _isSaving = true);
     try {
+      if (_wishItem == null && _newImageUrl == null) {
+        _newImageUrl = await Navigator.of(context).push<String>(
+          MaterialPageRoute(
+            builder: (_) => AddWishImageScreen(productUrl: wishItem.productUrl),
+          ),
+        );
+        if (!mounted) return;
+        wishItem.imageUrl = _newImageUrl;
+      }
       final wishlistDao = WishlistDao();
       String? newWishlistId;
+      String? savedWishlistId;
+      String? savedWishId;
 
       // Create a new list if a name was provided
       if (newListName.isNotEmpty) {
@@ -227,7 +244,7 @@ class _AddWishScreenState extends State<AddWishScreen> {
         );
       } else {
         // Adding a new wish to one or more lists
-        final allFutures = <Future>[];
+        final allFutures = <Future<String>>[];
         final allListIds = {..._selectedWishlistIds};
         if (newWishlistId != null) {
           allListIds.add(newWishlistId);
@@ -238,9 +255,12 @@ class _AddWishScreenState extends State<AddWishScreen> {
         for (final listId in allListIds) {
           allFutures.add(wishlistDao.addItem(listId, wishItem.toMap()));
         }
-        await Future.wait(allFutures);
+        final savedWishIds = await Future.wait(allFutures);
+        savedWishlistId = allListIds.first;
+        savedWishId = savedWishIds.first;
       }
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -251,14 +271,29 @@ class _AddWishScreenState extends State<AddWishScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      Navigator.of(context).pop();
+      if (savedWishlistId != null && savedWishId != null) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => WishDetailScreen(
+              userId: user.uid,
+              wishListId: savedWishlistId,
+              wishItemId: savedWishId!,
+            ),
+          ),
+        );
+      } else {
+        Navigator.of(context).pop();
+      }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al guardar el deseo: $e'),
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -282,7 +317,10 @@ class _AddWishScreenState extends State<AddWishScreen> {
       appBar: AppBar(
         title: Text(_wishItem == null ? 'Añadir Deseo' : 'Editar Deseo'),
         actions: [
-          IconButton(icon: const Icon(Icons.save), onPressed: _saveWish),
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _isLoading || _isSaving ? null : _saveWish,
+          ),
         ],
       ),
       body: _isLoading

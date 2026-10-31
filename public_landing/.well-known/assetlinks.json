@@ -1,0 +1,16 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.luia",
+      "sha256_cert_fingerprints": [
+        "EB:38:54:AC:C4:DE:CF:68:28:B0:62:77:1E:BB:E6:C6:60:FF:D8:21:84:E3:1B:6E:F3:FE:BC:53:16:B9:93:D1",
+        "4B:FB:DE:64:DE:8D:51:49:C0:D3:C0:38:03:20:B7:D1:A6:97:73:4E:BF:1A:93:8F:23:00:F2:3A:C4:D7:DA:33"
+      ]
+    }
+  }
+]

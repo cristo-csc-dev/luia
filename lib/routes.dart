@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:flutter/material.dart';
 import 'package:luia/auth/user_auth.dart';
 import 'package:luia/screens/contacts/contact_list_screen.dart';
 import 'package:luia/screens/contacts/create_contact_request_screen.dart';
@@ -9,6 +10,7 @@ import 'package:luia/screens/login/create_user_screen.dart';
 import 'package:luia/screens/login/email_verification_screen.dart';
 import 'package:luia/screens/login/login_screen.dart';
 import 'package:luia/screens/user/user_profile_screen.dart';
+import 'package:luia/screens/user/delete_account_screen.dart';
 import 'package:luia/screens/wish/my_ihaveit_screen.dart';
 import 'package:luia/screens/wish/add_wish_screen.dart';
 import 'package:luia/screens/wish/create_edit_list_screen.dart';
@@ -18,26 +20,64 @@ import 'package:luia/screens/wish/wish_detail_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:luia/screens/wish/ihaveit_detail_screen.dart';
 
+// Resolver widget para localizar el owner de una wishlist por su id
+class _PublicListResolver extends StatelessWidget {
+  final String wishListId;
+  const _PublicListResolver({super.key, required this.wishListId});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      future: FirebaseFirestore.instance
+          .collectionGroup('wishlists')
+          .where(FieldPath.documentId, isEqualTo: wishListId)
+          .limit(1)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Lista no encontrada')));
+        }
+        final doc = snapshot.data!.docs.first;
+        final ownerRef = doc.reference.parent.parent;
+        final ownerId = ownerRef?.id ?? '';
+        return ListDetailScreen(userId: ownerId, wishListId: wishListId);
+      },
+    );
+  }
+}
+
 GoRouter getRouter(UserAuth userAuth) => GoRouter(
 
   initialLocation: '/home',
   refreshListenable: userAuth, // URL por defecto al abrir la app
   redirect: (context, state) {
     final isLoggedIn = userAuth.isAuthenticated;
-    final isGoingToLogin = state.uri.toString() == '/login';
-    final isGoingToSignup = state.uri.toString() == '/login/signup';
-    final isGoingToVerification = state.uri.toString() == '/login/verify';
+    final isGoingToLogin = state.uri.path == '/login';
+    final isGoingToSignup = state.uri.path == '/login/signup';
+    final isGoingToVerification = state.uri.path == '/login/verify';
 
     // CASO 1: No está logueado y no está en login ni signup -> Mandar a Login
     if (!isLoggedIn &&
         !isGoingToLogin &&
         !isGoingToSignup &&
         !isGoingToVerification) {
-      return '/login';
+      // Preserve the original requested location so we can return after login
+      final encoded = Uri.encodeComponent(state.uri.toString());
+      return '/login?from=$encoded';
     }
 
     // CASO 2: Ya está logueado e intenta ir al login -> Mandar a Home
     if (isLoggedIn && isGoingToLogin) {
+      final from = state.uri.queryParameters['from'];
+      final destination = from == null ? null : Uri.tryParse(from);
+      if (destination != null && !destination.hasScheme &&
+          !destination.hasAuthority && destination.path.startsWith('/') &&
+          !destination.path.startsWith('/login')) {
+        return destination.toString();
+      }
       return '/home';
     }
 
@@ -49,17 +89,40 @@ GoRouter getRouter(UserAuth userAuth) => GoRouter(
     return null;
   },
   routes: [
+    // Public top-level routes for incoming shared links
+    GoRoute(
+      path: '/wish/:wishItemId',
+      builder: (context, state) {
+        final wishItemId = state.pathParameters['wishItemId'] ?? '';
+        return WishDetailScreen(wishItemId: wishItemId);
+      },
+    ),
+    GoRoute(
+      path: '/list/:wishListId/wish/:wishItemId',
+      builder: (context, state) {
+        final wishListId = state.pathParameters['wishListId'] ?? '';
+        final wishItemId = state.pathParameters['wishItemId'] ?? '';
+        return WishDetailScreen(wishListId: wishListId, wishItemId: wishItemId);
+      },
+    ),
+    GoRoute(
+      path: '/list/:wishListId',
+      builder: (context, state) {
+        final wishListId = state.pathParameters['wishListId'] ?? '';
+        return _PublicListResolver(wishListId: wishListId);
+      },
+    ),
     GoRoute(
       path: '/login',
-      builder: (context, state) => const LoginScreen(),
+      builder: (context, state) => LoginScreen(from: state.uri.queryParameters['from']),
       routes: [
         GoRoute(
           path: '/signup',
-          builder: (context, state) => const CreateUserScreen(),
+          builder: (context, state) => CreateUserScreen(from: state.uri.queryParameters['from']),
         ),
         GoRoute(
           path: '/verify',
-          builder: (context, state) => const EmailVerificationScreen(),
+          builder: (context, state) => EmailVerificationScreen(from: state.uri.queryParameters['from']),
         ),
       ],
     ),
@@ -76,6 +139,12 @@ GoRouter getRouter(UserAuth userAuth) => GoRouter(
         GoRoute(
           path: '/profile',
           builder: (context, state) => const UserProfileScreen(),
+          routes: [
+            GoRoute(
+              path: 'delete-account',
+              builder: (context, state) => const DeleteAccountScreen(),
+            ),
+          ],
         ),
         GoRoute(
           path: '/global/:wishItemId/detail',

@@ -9,7 +9,8 @@ import 'package:luia/utils/message_utils.dart';
 // Importa la nueva pantalla de creación
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? from;
+  const LoginScreen({super.key, this.from});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -37,6 +38,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if(await UserDao().getUserById(UserAuth.instance.getCurrentUser().uid) == null) {
         await UserDao().createUser(_auth.currentUser!.uid, _emailController.text, _auth.currentUser!.displayName ?? "Sin nombre");
+      }
+      // After successful sign-in, navigate to original requested location if present
+      if (mounted) {
+        final from = widget.from;
+        if (from != null && from.isNotEmpty) {
+          try {
+            final decoded = Uri.decodeComponent(from);
+            context.go(decoded);
+            return;
+          } catch (_) {
+            // fallthrough to home
+          }
+        }
+        context.go('/home');
       }
 
     } on FirebaseAuthException catch (e) {

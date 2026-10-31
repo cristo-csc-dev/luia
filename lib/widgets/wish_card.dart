@@ -299,13 +299,14 @@ class _WishCardState extends State<WishCard> {
                           };
                           final deepLink = Uri.parse(baseLink).replace(queryParameters: utmParams).toString();
                           parts.add(deepLink);
-                          // Include product URL and notes as additional context
-                          if (wishItem.productUrl != null && wishItem.productUrl!.isNotEmpty) parts.add(wishItem.productUrl!);
+                          // Include notes as additional context (hide productUrl and imageUrl)
                           if (wishItem.notes != null && wishItem.notes!.isNotEmpty) parts.add(wishItem.notes!);
                           final shareText = parts.join('\n');
 
                           // If there's a remote image, try to download and share it as EXTRA_STREAM
                           try {
+                            // Log share text for debugging
+                            debugPrint('WishCard: sharing text:\n$shareText');
                             if (wishItem.imageUrl != null && wishItem.imageUrl!.isNotEmpty && wishItem.imageUrl!.startsWith('http')) {
                               final file = await DefaultCacheManager().getSingleFile(wishItem.imageUrl!);
                               final xfile = XFile(file.path);
@@ -316,6 +317,7 @@ class _WishCardState extends State<WishCard> {
                             // ignore and fallback to text share
                           }
 
+                          debugPrint('WishCard: sharing text (fallback):\n$shareText');
                           await Share.share(shareText, subject: wishItem.name);
                         }
                         if (value == 'edit') widget.onEdit?.call();

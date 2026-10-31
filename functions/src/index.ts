@@ -18,6 +18,7 @@ import * as path from "path";
 
 // Initialize Firebase Admin SDK
 admin.initializeApp();
+export {deleteMyAccount} from "./delete_account";
 const db = getFirestore();
 
 // Interfaces for type safety
@@ -106,6 +107,10 @@ export const syncItemsToGlobalList = functions
     ) => {
       logger.info("Luia: Nuevo item ${itemId} en listas");
       const {userId, wishlistId, itemId} = context.params;
+      const owner = await db.collection("users").doc(userId).get();
+      if (!owner.exists || owner.data()?.accountDeletionPending === true) {
+        return;
+      }
 
       // 1. Manejo de ELIMINACIÓN
       if (!change.after.exists) {
@@ -232,13 +237,16 @@ export const syncItemsToGlobalList = functions
         .collection("items").doc(itemId);
 
       if (!isSameGlobalWish) {
-        await originalItemRef.set(
-          {
+        await db.runTransaction(async (transaction) => {
+          const currentOwner = await transaction.get(owner.ref);
+          const currentItem = await transaction.get(originalItemRef);
+          if (!currentOwner.exists || !currentItem.exists ||
+              currentOwner.data()?.accountDeletionPending === true) return;
+          transaction.update(originalItemRef, {
             globalWishId,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-          },
-          {merge: true}
-        );
+          });
+        });
         logger.info(`Luia: Ítem ${itemId} sincronizado globalmente con ID: 
           ${globalWishId}`);
       } else {
@@ -264,6 +272,13 @@ export const onNewContactRequest = functions
         recipientEmail,
         message,
       } = requestData;
+
+      const participants = await db.getAll(
+        db.collection("users").doc(senderUserId),
+        db.collection("users").doc(recipientUserId)
+      );
+      if (participants.some((user) => !user.exists ||
+          user.data()?.accountDeletionPending === true)) return;
 
       // Use explicit type or simplified object to avoid long line length errors
       const newNotification: NotificationData = {
@@ -323,6 +338,13 @@ export const onContactRequestStatusUpdate = functions
         );
         return null;
       }
+
+      const participants = await db.getAll(
+        db.collection("users").doc(senderId),
+        db.collection("users").doc(recipientId)
+      );
+      if (participants.some((user) => !user.exists ||
+          user.data()?.accountDeletionPending === true)) return null;
 
       const addedAt = admin.firestore.FieldValue.serverTimestamp();
       const recipientContactData: ContactData = {

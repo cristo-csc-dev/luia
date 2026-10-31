@@ -4,7 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:luia/dao/user_dao.dart';
 
 class CreateUserScreen extends StatefulWidget {
-  const CreateUserScreen({super.key});
+  final String? from;
+  const CreateUserScreen({super.key, this.from});
 
   @override
   State<CreateUserScreen> createState() => _CreateUserScreenState();
@@ -45,10 +46,10 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       await UserDao().createUser(userCredential.user!.uid, _emailController.text, '');
       await FirebaseAuth.instance.signOut();
       
-      // Al registrar, navega automáticamente a la pantalla principal
-      // debido al StreamBuilder en main.dart. Cierra la pantalla de registro.
-      if(mounted) {
-        context.go('/login/verify');
+      // Al registrar, navega a la verificación de email y conserva 'from'
+      if (mounted) {
+        final fromParam = widget.from != null && widget.from!.isNotEmpty ? '?from=${Uri.encodeComponent(Uri.decodeComponent(widget.from!))}' : '';
+        context.go('/login/verify$fromParam');
       }
     } on FirebaseAuthException catch (e) {
       String message;

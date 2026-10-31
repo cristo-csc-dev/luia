@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:go_router/go_router.dart';
 import 'package:luia/dao/user_dao.dart';
 import 'package:luia/utils/simple_image_cropper.dart';
 
@@ -37,6 +38,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   void dispose() {
     _displayNameController.dispose();
+    _displayEmailController.dispose();
     _photoUrlController.dispose();
     super.dispose();
   }
@@ -215,7 +217,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Editar Perfil')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
@@ -316,6 +318,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : const Text('Guardar Cambios'),
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Divider(),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: _isLoading
+                      ? null
+                      : () => context.push('/home/profile/delete-account'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Theme.of(context).colorScheme.error,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  icon: const Icon(Icons.delete_forever_outlined),
+                  label: const Text(
+                    'Eliminar mis datos de la aplicación y cerrar cuenta',
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
             ],

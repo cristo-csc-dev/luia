@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:luia/auth/user_auth.dart';
 import 'firebase_options.dart';
 import 'package:luia/routes.dart';
+import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:luia/services/contacts_manager.dart';
 import 'package:luia/services/deep_link_service.dart';
@@ -47,12 +48,14 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  late final GoRouter _router;
   late final DeepLinkService _deepLinkService;
   StreamSubscription<Uri>? _deepLinkSubscription;
 
   @override
   void initState() {
     super.initState();
+    _router = getRouter(UserAuth.instance);
     _deepLinkService = DeepLinkService();
 
     // Escuchar cambios de estado de autenticación para cargar/limpiar contactos
@@ -67,7 +70,11 @@ class _MyAppState extends State<MyApp> {
 
     _deepLinkSubscription = _deepLinkService.linkStream.listen((uri) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _deepLinkService.handleUri(uri, context);
+        debugPrint('MyApp: deep-link event: $uri');
+        final linkContext = _router.routerDelegate.navigatorKey.currentContext;
+        if (linkContext != null) {
+          _deepLinkService.handleUri(uri, linkContext);
+        }
       });
     });
 
@@ -78,6 +85,7 @@ class _MyAppState extends State<MyApp> {
   void dispose() {
     _deepLinkSubscription?.cancel();
     _deepLinkService.dispose();
+    _router.dispose();
     super.dispose();
   }
 
@@ -98,7 +106,7 @@ class _MyAppState extends State<MyApp> {
           backgroundColor: Colors.blueGrey,
         ),
       ),
-      routerConfig: getRouter(UserAuth.instance),
+      routerConfig: _router,
     );
   }
 }

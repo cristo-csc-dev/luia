@@ -94,12 +94,12 @@ class WishlistDao {
     }
   }
 
-  Future<void> addItem(String wishlistId, Map<String, dynamic> itemData) async {
+  Future<String> addItem(String wishlistId, Map<String, dynamic> itemData) async {
     try {
       if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
         throw Exception('Usuario no autenticado.');
       }
-      await _db.runTransaction((transaction) async {
+      return await _db.runTransaction<String>((transaction) async {
         final wishlistRef = _db
             .collection('users')
             .doc(UserAuth.instance.getCurrentUser().uid)
@@ -113,10 +113,11 @@ class WishlistDao {
         dataWithTimestamp['isTaken'] = dataWithTimestamp['isTaken'] ?? false;
         dataWithTimestamp['createdAt'] = FieldValue.serverTimestamp();
 
-        await itemsRef.add(dataWithTimestamp);
+        final itemRef = await itemsRef.add(dataWithTimestamp);
         int itemCount = (await itemsRef.count().get()).count ?? 0;
 
         transaction.update(wishlistRef, {'itemCount': itemCount});
+        return itemRef.id;
       });
     } catch (e) {
       // Devolvemos el error para que el UI pueda manejarlo

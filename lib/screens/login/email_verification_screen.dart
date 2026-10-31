@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class EmailVerificationScreen extends StatelessWidget {
-  const EmailVerificationScreen({super.key});
+  final String? from;
+  const EmailVerificationScreen({super.key, this.from});
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +59,11 @@ class EmailVerificationScreen extends StatelessWidget {
                 height: 50,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    context.go('/login');
+                    if (from != null && from!.isNotEmpty) {
+                      context.go('/login?from=${Uri.encodeComponent(Uri.decodeComponent(from!))}');
+                    } else {
+                      context.go('/login');
+                    }
                   },
                   icon: const Icon(Icons.login),
                   label: const Text(

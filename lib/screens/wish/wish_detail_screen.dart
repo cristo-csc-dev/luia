@@ -307,18 +307,15 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
     };
     final deepLink = Uri.parse(baseLink).replace(queryParameters: utmParams).toString();
     parts.add(deepLink);
-    if (_wishItem!.productUrl != null && _wishItem!.productUrl!.isNotEmpty) {
-      parts.add(_wishItem!.productUrl!);
-    }
+    // Keep notes but hide productUrl and imageUrl from the shared text
     if (_wishItem!.notes != null && _wishItem!.notes!.isNotEmpty) {
       parts.add(_wishItem!.notes!);
-    }
-    if (_wishItem!.imageUrl != null && _wishItem!.imageUrl!.isNotEmpty) {
-      parts.add(_wishItem!.imageUrl!);
     }
     final shareText = parts.join('\n');
     // If image URL present, try to download and share as EXTRA_STREAM
     try {
+      // Log share text for debugging
+      debugPrint('WishDetail: sharing text:\n$shareText');
       if (_wishItem!.imageUrl != null && _wishItem!.imageUrl!.isNotEmpty && _wishItem!.imageUrl!.startsWith('http')) {
         final file = await DefaultCacheManager().getSingleFile(_wishItem!.imageUrl!);
         final xfile = XFile(file.path);
@@ -329,6 +326,7 @@ class _WishDetailScreenState extends State<WishDetailScreen> {
       // ignore and fallback
     }
 
+    debugPrint('WishDetail: sharing text (fallback):\n$shareText');
     Share.share(shareText, subject: _wishItem!.name);
   }
 
