@@ -113,22 +113,38 @@ class _HomeScreenState extends State<HomeScreen> {
           final wishesByTag = <String, _TagGroup>{};
           for (final wish in snapshot.data?.docs ?? []) {
             final tags = (wish.data()['tags'] as List?)?.whereType<String>();
+            final seenTags = <String>{};
             for (final rawTag in tags ?? const <String>[]) {
               final tagName = rawTag.trim();
-              if (tagName.isEmpty) continue;
+              if (tagName.isEmpty || !seenTags.add(tagName.toLowerCase())) {
+                continue;
+              }
               wishesByTag
                   .putIfAbsent(
                     tagName.toLowerCase(),
                     () => _TagGroup(name: tagName),
                   )
-                  .wishes
-                  .add(wish);
+                  .addWish(wish);
             }
           }
           final groups = wishesByTag.values.toList()
             ..sort(
-              (first, second) =>
-                  first.name.toLowerCase().compareTo(second.name.toLowerCase()),
+              (first, second) {
+                final firstIsLarge = first.wishes.length > 5;
+                final secondIsLarge = second.wishes.length > 5;
+                if (firstIsLarge != secondIsLarge) return firstIsLarge ? -1 : 1;
+                if (!firstIsLarge) {
+                  final byCount = second.wishes.length.compareTo(first.wishes.length);
+                  if (byCount != 0) return byCount;
+                }
+                if (firstIsLarge) {
+                  final byDate = second.latestWishAddedAt.compareTo(
+                    first.latestWishAddedAt,
+                  );
+                  if (byDate != 0) return byDate;
+                }
+                return first.name.toLowerCase().compareTo(second.name.toLowerCase());
+              },
             );
           for (final group in groups) {
             group.wishes.sort((first, second) {
@@ -284,8 +300,19 @@ class _HomeScreenState extends State<HomeScreen> {
 class _TagGroup {
   final String name;
   final List<QueryDocumentSnapshot<Map<String, dynamic>>> wishes = [];
+  Timestamp latestWishAddedAt = Timestamp(0, 0);
 
   _TagGroup({required this.name});
+
+  void addWish(QueryDocumentSnapshot<Map<String, dynamic>> wish) {
+    wishes.add(wish);
+    // Global wishes record their creation date as flattenedAt.
+    final data = wish.data();
+    final addedAt = data['flattenedAt'] ?? data['createdAt'];
+    if (addedAt is Timestamp && addedAt.compareTo(latestWishAddedAt) > 0) {
+      latestWishAddedAt = addedAt;
+    }
+  }
 }
 
 bool _hasUsableWishImage(QueryDocumentSnapshot<Map<String, dynamic>> wish) {

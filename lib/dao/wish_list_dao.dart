@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:luia/auth/user_auth.dart';
-import 'package:luia/models/comment.dart';
 import 'package:luia/models/wish_item.dart';
 import 'package:luia/models/wish_list.dart';
 
@@ -123,6 +122,52 @@ class WishlistDao {
       // Devolvemos el error para que el UI pueda manejarlo
       throw Exception('Error al agregar el deseo: $e');
     }
+  }
+
+  Future<String> duplicateItem({
+    required String sourceWishlistId,
+    required String itemId,
+    required String destinationWishlistId,
+  }) async {
+    if (!UserAuth.instance.isUserAuthenticatedAndVerified()) {
+      throw Exception('Usuario no autenticado.');
+    }
+    if (sourceWishlistId == destinationWishlistId) {
+      throw Exception('Selecciona otra lista para duplicar el deseo.');
+    }
+
+    final lists = _db.collection('users')
+        .doc(UserAuth.instance.getCurrentUser().uid).collection('wishlists');
+    final sourceList = lists.doc(sourceWishlistId);
+    final destinationList = lists.doc(destinationWishlistId);
+    final copyRef = destinationList.collection('items').doc();
+
+    return _db.runTransaction<String>((transaction) async {
+      final source = await transaction.get(sourceList);
+      final destination = await transaction.get(destinationList);
+      final item = await transaction.get(sourceList.collection('items').doc(itemId));
+      final userId = UserAuth.instance.getCurrentUser().uid;
+      if (!source.exists || !destination.exists ||
+          source.data()?['ownerId'] != userId ||
+          destination.data()?['ownerId'] != userId) {
+        throw Exception('Las dos listas deben pertenecer al usuario actual.');
+      }
+      if (!item.exists) throw Exception('Deseo no encontrado.');
+
+      final data = Map<String, dynamic>.from(item.data()!);
+      data.remove('id');
+      data.addAll({
+        'isBought': false,
+        'boughtById': null,
+        'isTaken': false,
+        'claimedBy': null,
+        'claimedAt': null,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      transaction.set(copyRef, data);
+      transaction.update(destinationList, {'itemCount': FieldValue.increment(1)});
+      return copyRef.id;
+    });
   }
 
   Future<void> updateItem(

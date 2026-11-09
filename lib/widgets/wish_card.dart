@@ -35,6 +35,63 @@ class WishCard extends StatefulWidget {
 class _WishCardState extends State<WishCard> {
   late int _currentPriority;
   bool _isUpdating = false;
+  bool _isDuplicating = false;
+
+  Future<void> _duplicateToAnotherList() async {
+    final sourceListId = widget.wishList?.id;
+    if (!_isOwner || sourceListId == null || _isDuplicating) return;
+    setState(() => _isDuplicating = true);
+    try {
+      final userId = UserAuth.instance.getCurrentUser().uid;
+      final snapshot = await WishlistDao().getWishlistsStream(userId);
+      if (!mounted) return;
+      final lists = snapshot.docs
+          .where((doc) => doc.id != sourceListId && doc.data()['ownerId'] == userId)
+          .map(WishList.fromFirestore)
+          .toList()
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      if (lists.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Crea otra lista para poder duplicar este deseo.'),
+        ));
+        return;
+      }
+      final destination = await showDialog<WishList>(
+        context: context,
+        builder: (dialogContext) => SimpleDialog(
+          title: const Text('Duplicar en otra lista'),
+          children: [
+            for (final list in lists)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(dialogContext, list),
+                child: Text(list.name),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+          ],
+        ),
+      );
+      if (destination == null || !mounted) return;
+      await WishlistDao().duplicateItem(
+        sourceWishlistId: sourceListId,
+        itemId: widget.wishItem.id,
+        destinationWishlistId: destination.id!,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Deseo duplicado en "${destination.name}".'),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('No se pudo duplicar el deseo: $e'),
+      ));
+    } finally {
+      if (mounted) setState(() => _isDuplicating = false);
+    }
+  }
 
   @override
   void initState() {
@@ -321,6 +378,7 @@ class _WishCardState extends State<WishCard> {
                           await Share.share(shareText, subject: wishItem.name);
                         }
                         if (value == 'edit') widget.onEdit?.call();
+                        if (value == 'duplicate') await _duplicateToAnotherList();
                         if (value == 'delete') widget.onDelete?.call();
                         if (value == 'ihaveit') {
                           // Abrir formulario para marcar como 'Lo tengo!'
@@ -353,6 +411,15 @@ class _WishCardState extends State<WishCard> {
                             const PopupMenuItem<String>(
                               value: 'edit',
                               child: Text('Editar'),
+                            ),
+                            PopupMenuItem<String>(
+                              value: 'duplicate',
+                              enabled: !_isDuplicating,
+                              child: const Row(children: [
+                                Icon(Icons.copy),
+                                SizedBox(width: 12),
+                                Text('Duplicar en otra lista'),
+                              ]),
                             ),
                             if (wishList != null && wishList.ownerId == UserAuth.instance.getCurrentUser().uid)
                               const PopupMenuItem<String>(
